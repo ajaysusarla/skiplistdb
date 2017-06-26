@@ -1,0 +1,4 @@
+*.o
+.dep/
+*.swp
+ts-test
