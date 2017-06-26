@@ -11,4 +11,11 @@
 #ifndef _TWOSKIP_H_
 #define _TWOSKIP_H_
 
+typedef enum rectype {
+        DUMMY  = '=',
+        ADD    = '+',
+        DELETE = '-',
+        COMMIT = '$',
+} RecType;
+
 #endif  /* _TWOSKIP_H_ */

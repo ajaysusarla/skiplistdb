@@ -2,3 +2,4 @@
 .dep/
 *.swp
 ts-test
+Makefile.dep
