@@ -40,14 +40,18 @@ TS_INSTALL=$(QIN)$(INSTALL)
 TS_RM=$(QRM)rm -rf
 
 # Object files
-TS_OBJS = \
-	twoskip.o \
-	ts-test.o \
+TS_OBJS =           \
+	cstring.o   \
+	twoskip.o   \
+	util.o      \
+	ts-test.o   \
 	$(NULL)
 
 # Headers
-TS_HDRS = \
-	twoskip.h \
+TS_HDRS =           \
+	cstring.h   \
+	twoskip.h   \
+	util.h 	    \
 	$(NULL)
 
 TWOSKIP_TEST=ts-test
@@ -57,7 +61,7 @@ all: $(TWOSKIP_TEST)
 Makefile.dep:
 	$(TS_CC) -MM *.c > Makefile.dep 2> /dev/null || true
 
-include Makefile.dep
+-include Makefile.dep
 
 %.o:  %.c
 	$(TS_CC) -c $<
