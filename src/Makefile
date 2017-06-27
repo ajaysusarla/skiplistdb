@@ -66,7 +66,7 @@ Makefile.dep:
 %.o:  %.c
 	$(TS_CC) -c $<
 
-$(TWOSKIP_TEST): $(TS_OBJS) $(TS_HDRS)
+$(TWOSKIP_TEST): $(TS_OBJS)
 	$(TS_LD) -o $@ $^ $(TS_LIBS)
 
 clean:
