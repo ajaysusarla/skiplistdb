@@ -10,9 +10,30 @@
 
 #include "twoskip.h"
 
+#include "cstring.h"
+#include "util.h"
+
 #include <stdio.h>
 #include <stdint.h>
 
+/* static const char *HEADER_MAGIC = "\241\002\213\015twoskip file\0\0\0\0"; */
+/* static const int   HEADER_MAGIC_SIZE = 20; */
+/*
+ * TS_MALXLEVEL: Number of skiplist levels - 31.
+ * This gives us binary search for 2^32 records. Limited to 255 by file format.
+ */
+#define TS_MAXLEVEL 31
+
+/**
+ * Trasaction structure
+ **/
+struct txn {
+        int num;
+};
+
+/**
+ *  Twoskip DB Header
+ **/
 enum {
         OFFSET_HEADER        = 0,
         OFFSET_VERSION       = 20,
@@ -33,17 +54,85 @@ struct db_header {
         size_t   current_size;
 };
 
-struct tsdb {
-        struct db_header header;
-};
+#define TS_HEADER_SIZE 64
 
+/**
+ * The structure of each record in Twoskip DB.
+ **/
 struct tsrec {
-        int a;
+        /* location on disk (not part of the on-disk format) */
+        size_t offset;
+        size_t len;
+
+        /* Header fields */
+        RecType type;
+        uint8_t level;
+        size_t keylen;
+        size_t vallen;
+
+        /* Levels */
+        size_t nextlevel[TS_MAXLEVEL + 1];
+
+        /* Integrity checks */
+        uint32_t crc_head;
+        uint32_t crc_tail;
+
+        /* Key and Value */
+        size_t keyoffset;
+        size_t valoffset;
 };
 
+/**
+ * A structure that describes location in the Twoskip DB file.
+ **/
+struct tsloc {
+        /* Requested data */
+        cstring keybuf;
+        int is_exactmatch;
 
+        /* current or next record */
+        struct tsrec record;
 
-int ts_open(const char *fname __attribute__((unused)))
+        size_t backloc[TS_MAXLEVEL + 1];
+        size_t forwardloc[TS_MAXLEVEL + 1];
+
+        /* generation to ensure that the location is still valid */
+        uint64_t generation;
+        size_t end;
+};
+
+struct tsdb_engine {
+        /* FILE *f */   /* XXX: Need a lockable mapped file interface here*/
+        struct db_header header;
+        struct tsloc loc;
+
+        /* tracking info */
+        int is_open;
+        size_t end;
+        int txn_num;
+        struct txn *current_txn;
+
+        /* compare function for sorting */
+        int open_flags;
+        int (*compare)(const char *s1, int l1, const char *s2, int l2);
+};
+
+struct tsdb {
+        struct tsdb_engine *engine;
+};
+
+struct tsdb_list {
+        struct tsdb_engine *engine;
+        struct tsdb_list *next;
+        int refcount;
+};
+
+int tsdb_open(const char *fname __attribute__((unused)))
+{
+        return 0;
+}
+
+int tsdb_close(void)
 {
         return 0;
 }
