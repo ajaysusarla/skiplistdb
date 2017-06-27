@@ -136,3 +136,73 @@ int tsdb_close(void)
 {
         return 0;
 }
+
+int tsdb_fetch(void)
+{
+        return 0;
+}
+
+int tsdb_fetchnext(void)
+{
+        return 0;
+}
+
+int tsdb_foreach(void)
+{
+        return 0;
+}
+
+int tsdb_forone(void)
+{
+        return 0;
+}
+
+int tsdb_create(void)
+{
+        return 0;
+}
+
+int tsdb_add(void)
+{
+        return 0;
+}
+
+int tsdb_delete(void)
+{
+        return 0;
+}
+
+int tsdb_commit(void)
+{
+        return 0;
+}
+
+int tsdb_abort(void)
+{
+        return 0;
+}
+
+int tsdb_dump(void)
+{
+        return 0;
+}
+
+int tsdb_consistent(void)
+{
+        return 0;
+}
+
+int tsdb_repack(void)
+{
+        return 0;
+}
+
+int tsdb_init(void)
+{
+        return 0;
+}
+
+int tsbd_done(void)
+{
+        return 0;
+}
