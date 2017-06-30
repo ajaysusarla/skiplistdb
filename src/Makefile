@@ -44,6 +44,7 @@ TS_OBJS =           \
 	cstring.o   \
 	twoskip.o   \
 	util.o      \
+	mappedfile.o \
 	ts-test.o   \
 	$(NULL)
 
@@ -52,6 +53,8 @@ TS_HDRS =           \
 	cstring.h   \
 	twoskip.h   \
 	util.h 	    \
+	macros.h    \
+	mappedfile.h \
 	$(NULL)
 
 TWOSKIP_TEST=ts-test
