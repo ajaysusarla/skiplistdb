@@ -16,6 +16,10 @@
 #include <stdint.h>
 #include <limits.h>
 
+#include "macros.h"
+
+CPP_GUARD_START
+
 typedef enum {
         FALSE = 0,
         TRUE
@@ -120,5 +124,7 @@ static inline size_t st_mult(size_t a, size_t b)
 int file_change_mode_rw(const char *path);
 bool_t file_exists(const char *file);
 int file_rename(const char *oldpath, const char *newpath);
+
+CPP_GUARD_END
 
 #endif  /* _UTIL_H_ */

@@ -11,11 +11,17 @@
 #ifndef _TWOSKIP_H_
 #define _TWOSKIP_H_
 
+#include "macros.h"
+
+CPP_GUARD_START
+
 typedef enum rectype {
         DUMMY  = '=',
         ADD    = '+',
         DELETE = '-',
         COMMIT = '$',
 } RecType;
+
+CPP_GUARD_END
 
 #endif  /* _TWOSKIP_H_ */

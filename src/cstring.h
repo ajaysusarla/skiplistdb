@@ -16,6 +16,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "macros.h"
+
+CPP_GUARD_START
+
 struct _cstring {
         size_t len;
         size_t alloc;
@@ -52,6 +56,8 @@ char *cstring_detach(cstring *cstr, size_t *len);
 void cstring_attach(cstring *cstr, void *buf, size_t len, size_t alloc);
 
 void cstring_grow(cstring *cstr, size_t len);
+
+CPP_GUARD_END
 
 #endif  /* _CSTRING_H_ */
 

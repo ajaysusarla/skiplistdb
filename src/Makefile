@@ -72,4 +72,7 @@ $(TWOSKIP_TEST): $(TS_OBJS)
 clean:
 	$(TS_RM) $(TS_OBJS) $(TWOSKIP_TEST) *.o Makefile.dep
 
-.PHONY: all clean
+check-syntax:
+	$(CC) $(CFLAGS) -Wextra -pedantic -fsyntax-only $(CHK_SOURCES)
+
+.PHONY: all clean check-syntax
