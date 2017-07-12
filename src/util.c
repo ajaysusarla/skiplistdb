@@ -11,6 +11,7 @@
 #include "util.h"
 
 #include <unistd.h>
+#include <string.h>
 #include <sys/stat.h>
 
 void *xmalloc(size_t size)
@@ -70,6 +71,15 @@ void *xcalloc(size_t nmemb, size_t size)
 
 }
 
+char *xstrdup(const char *s)
+{
+        size_t len = strlen(s) + 1;
+        char *ptr = xmalloc(len);
+
+        memcpy(ptr, s, len);
+
+        return ptr;
+}
 
 void xfree(void *ptr)
 {
