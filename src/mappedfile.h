@@ -20,8 +20,9 @@
 CPP_GUARD_START
 
 struct mappedfile {
-        char *fname;
+        char *filename;
         int fd;
+        unsigned char *ptr;
         size_t size;
         size_t offset;
         uint32_t flags;
@@ -33,6 +34,9 @@ enum {
         MAPPEDFILE_WR     = (1 << 2),
         MAPPEDFILE_RW     = (1 << 3),
 };
+
+int mappedfile_open(const char *fname, uint32_t flags, struct mappedfile **mfp);
+int mappedfile_close(struct mappedfile **mfp);
 
 CPP_GUARD_END
 
