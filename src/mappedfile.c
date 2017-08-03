@@ -9,6 +9,8 @@
  *
  */
 
+#define _XOPEN_SOURCE 500       /* For ftruncate() see `man ftruncate` */
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -17,6 +19,7 @@
 
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 
 #include "mappedfile.h"
 #include "util.h"
@@ -193,6 +196,25 @@ int mappedfile_write(struct mappedfile **mfp, char *ibuf, size_t ibufsize,
 
         if (mf->size < (mf->offset + ibufsize)) {
                 /* If the input buffer's size is bigger, we overwrite. */
+                if (mf->ptr && munmap(mf->ptr, mf->size) != 0) {
+                        int err = errno;
+                        mf->ptr = MAP_FAILED;
+                        close(mf->fd);
+                        return err;
+                }
+
+                if (ftruncate(mf->fd, mf->offset + ibufsize) != 0)
+                        return errno;
+
+                mf->ptr = mmap(0, mf->offset + ibufsize, mf->flags,
+                               MAP_SHARED, mf->fd, 0);
+                if (mf->ptr == MAP_FAILED) {
+                        int err = errno;
+                        close(mf->fd);
+                        return err;
+                }
+
+                mf->size = mf->offset + ibufsize;
         }
 
         if (ibufsize) {
