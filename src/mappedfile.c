@@ -227,3 +227,56 @@ int mappedfile_write(struct mappedfile **mfp, char *ibuf, size_t ibufsize,
 
         return 0;
 }
+
+/*
+  mappedfile_size():
+
+  * Return:
+    - On Success: returns 0
+    - On Failure: returns non 0
+ */
+int mappedfile_size(struct mappedfile **mfp, size_t *psize)
+{
+        struct mappedfile *mf = *mfp;
+        struct stat stbuf;
+        int err = 0;
+
+        if (mf == &mf_init || mf->ptr == MAP_FAILED)
+                return EINVAL;
+
+        if (mf->ptr && (mf->flags & PROT_WRITE))
+                msync(mf->ptr, mf->size, MS_SYNC);
+
+        if (fstat(mf->fd, &stbuf) != 0)
+                return errno;
+
+        if (mf->size != (size_t) stbuf.st_size) {
+                if (mf->ptr)
+                        err = munmap(mf->ptr, mf->size);
+
+                if (err != 0)
+                        err = errno;
+                else {
+                        mf->size = stbuf.st_size;
+                        if (mf->size) {
+                                mf->ptr = mmap(0, mf->size, mf->flags,
+                                               MAP_SHARED, mf->fd, 0);
+                                if (mf->ptr == MAP_FAILED)
+                                        err = errno;
+                        } else
+                                mf->ptr = NULL;
+                }
+        }
+
+        if (err != 0) {
+                mf->ptr = MAP_FAILED;
+                close(mf->fd);
+                mf->fd = -1;
+        } else {
+                if (psize)
+                        *psize = stbuf.st_size;
+        }
+
+        return err;
+
+}
