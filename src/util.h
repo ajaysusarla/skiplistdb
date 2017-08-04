@@ -126,6 +126,18 @@ int file_change_mode_rw(const char *path);
 bool_t file_exists(const char *file);
 int file_rename(const char *oldpath, const char *newpath);
 
+
+/*
+  File Locking
+ */
+struct flockctx {
+    int fd;
+    char *file;
+};
+
+int file_lock(const char *file, struct flockctx **ctx);
+int file_unlock(const char *file, struct flockctx **ctx);
+
 CPP_GUARD_END
 
 #endif  /* _UTIL_H_ */

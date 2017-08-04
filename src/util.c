@@ -10,9 +10,16 @@
 
 #include "util.h"
 
-#include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
+
+enum LAction {
+        Unlock = 0,
+        Lock = 1,
+};
 
 void *xmalloc(size_t size)
 {
@@ -128,4 +135,37 @@ int file_rename(const char *oldpath, const char *newpath)
         }
 
         return rename(oldpath, newpath);
+}
+
+
+static int key(int fd, enum LAction action)
+{
+        struct flock fl;
+
+        memset(&fl, 0, sizeof(fl));
+
+        fl.l_type = (action ? F_WRLCK : F_UNLCK);
+        fl.l_whence = SEEK_SET;
+        fl.l_start = 0;
+        fl.l_len = 0;
+
+        return fcntl(fd, F_SETLK, &fl);
+}
+
+/*
+  file_lock():
+  returns 0 if mode changed successfully, -1 otherwise.
+ */
+int file_lock(const char *file, struct flockctx **ctx)
+{
+        return 0;
+}
+
+/*
+  file_unlock():
+  returns 0 if mode changed successfully, -1 otherwise.
+ */
+int file_unlock(const char *file, struct flockctx **ctx)
+{
+        return 0;
 }
