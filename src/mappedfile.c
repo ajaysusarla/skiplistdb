@@ -69,6 +69,7 @@ int mappedfile_open(const char *fname, uint32_t flags, struct mappedfile **mfp)
                 mflags = PROT_WRITE;
                 oflags = O_WRONLY;
         } else if (flags & MAPPEDFILE_CREATE) {
+            return ENOSYS;
         } else if (flags & MAPPEDFILE_RD) {
                 mflags = PROT_READ;
                 oflags = O_RDONLY;
@@ -279,4 +280,85 @@ int mappedfile_size(struct mappedfile **mfp, size_t *psize)
 
         return err;
 
+}
+
+
+/*
+  mappedfile_truncate()
+
+  * Return:
+    - On Success: returns 0
+    - On Failure: returns non 0
+ */
+int mappedfile_truncate(struct mappedfile **mfp, size_t len)
+{
+        struct mappedfile *mf = *mfp;
+        int err = 0;
+
+        if (mf == &mf_init || mf->ptr == MAP_FAILED || mf->ptr == NULL)
+                return EINVAL;
+
+        if (munmap(mf->ptr, mf->size) != 0) {
+                err = errno;
+                mf->ptr = MAP_FAILED;
+                close(mf->fd);
+                return err;
+        }
+
+        if (ftruncate(mf->fd, len) != 0)
+                return errno;
+
+        mf->ptr = len ? mmap(0, len, mf->flags, MAP_SHARED, mf->fd, 0) : NULL;
+        if (mf->ptr == MAP_FAILED) {
+                err = errno;
+                close(mf->fd);
+                return err;
+        }
+
+        mf->size = len;
+
+        return 0;
+}
+
+/*
+  mappedfile_flush()
+
+  * Return:
+  - On Success: returns 0
+  - On Failure: returns non 0
+*/
+int mappedfile_flush(struct mappedfile **mfp)
+{
+        struct mappedfile *mf = *mfp;
+
+        if (mf == &mf_init || mf->ptr == MAP_FAILED || mf->ptr == NULL)
+                return EINVAL;
+
+        if (mf->flags & PROT_WRITE)
+                return msync(mf->ptr, mf->size, MS_SYNC);
+
+        return 0;
+}
+
+/*
+  mappedfile_seek()
+
+  * Return:
+  - On Success: returns 0
+  - On Failure: returns non 0
+*/
+int mappedfile_seek(struct mappedfile **mfp, size_t offset, size_t *newoffset)
+{
+        struct mappedfile *mf = *mfp;
+
+        if (mf == &mf_init || mf->ptr == MAP_FAILED || mf->ptr == NULL)
+                return EINVAL;
+
+        if (offset > mf->size)
+                return ESPIPE;
+
+        mf->offset = offset;
+        *newoffset = offset;
+
+        return 0;
 }
