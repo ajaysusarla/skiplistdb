@@ -35,8 +35,17 @@ enum {
         MAPPEDFILE_RW     = (1 << 3),
 };
 
-int mappedfile_open(const char *fname, uint32_t flags, struct mappedfile **mfp);
+int mappedfile_open(const char *fname, uint32_t flags,
+                    struct mappedfile **mfp);
 int mappedfile_close(struct mappedfile **mfp);
+int mappedfile_read(struct mappedfile **mfp, char *obuf, size_t obufsize,
+                    size_t *nbytes);
+int mappedfile_write(struct mappedfile **mfp, char *ibuf, size_t ibufsize,
+                     size_t *nbytes);
+int mappedfile_size(struct mappedfile **mfp, size_t *psize);
+int mappedfile_truncate(struct mappedfile **mfp, size_t len);
+int mappedfile_flush(struct mappedfile **mfp);
+int mappedfile_seek(struct mappedfile **mfp, size_t offset, size_t *newoffset);
 
 CPP_GUARD_END
 
