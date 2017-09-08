@@ -6,6 +6,9 @@ default: all
 install:
 	cd src && $(MAKE) $@
 
+test: all
+	$(MAKE) -C tests/ all
+
 .PHONY:install check-syntax
 
 check-syntax:

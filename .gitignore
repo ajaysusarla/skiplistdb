@@ -2,4 +2,6 @@
 .dep/
 *.swp
 ts-test
+ts-example
+results/
 Makefile.dep
