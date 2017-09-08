@@ -2,7 +2,7 @@
 -include ../config.mak
 
 # Object files
-TS_LIBOBJS =           	\
+SDB_LIBOBJS =           	\
 	cstring.o   	\
 	twoskip.o   	\
 	util.o      	\
@@ -10,7 +10,7 @@ TS_LIBOBJS =           	\
 	$(NULL)
 
 # Headers
-TS_HDRS =           	\
+SDB_HDRS =           	\
 	cstring.h   	\
 	twoskip.h   	\
 	util.h 	    	\
@@ -18,23 +18,21 @@ TS_HDRS =           	\
 	mappedfile.h 	\
 	$(NULL)
 
-TWOSKIP_EXAMPLE=ts-example
-
 all: $(AR_LIB_FILE)
 
 Makefile.dep:
-	$(TS_CC) -MM *.c > Makefile.dep 2> /dev/null || true
+	$(SDB_CC) -MM *.c > Makefile.dep 2> /dev/null || true
 
 -include Makefile.dep
 
 %.o:  %.c
-	$(TS_CC) -c $<
+	$(SDB_CC) -c $<
 
-$(AR_LIB_FILE): $(TS_LIBOBJS)
-	$(TS_RM) $@ && $(TS_AR) $(ARFLAGS) $@ $^
+$(AR_LIB_FILE): $(SDB_LIBOBJS)
+	$(SDB_RM) $@ && $(SDB_AR) $(ARFLAGS) $@ $^
 
 clean:
-	$(TS_RM) $(TS_LIBOBJS) $(AR_LIB_FILE) *.o Makefile.dep
+	$(SDB_RM) $(SDB_LIBOBJS) $(AR_LIB_FILE) *.o Makefile.dep
 
 check-syntax:
 	$(CC) $(CFLAGS) -Wextra -pedantic -fsyntax-only $(CHK_SOURCES)

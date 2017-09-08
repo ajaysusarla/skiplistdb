@@ -35,18 +35,17 @@ AR_LIB_FILE=libskiplistdb.a
 SO_LIB_FILE=
 
 ## Aliases
-TS_INSTALL=$(QIN)$(INSTALL)
-TS_RM=$(QRM)rm -rf
-TS_MKDIR=$(QMKDIR)mkdir -p
-TS_AR=$(QAR)ar
+SDB_INSTALL=$(QIN)$(INSTALL)
+SDB_RM=$(QRM)rm -rf
+SDB_MKDIR=$(QMKDIR)mkdir -p
+SDB_AR=$(QAR)ar
 
 # Compiler options
-TS_CFLAGS=-std=c99 -pedantic -Wall -W -Wno-missing-field-initializers -O0 $(CFLAGS) $(DEBUG)
-TS_LDFLAGS=$(LDFLAGS) $(DEBUG)
-TS_LIBS=
+SDB_CFLAGS=-std=c99 -pedantic -Wall -W -Wno-missing-field-initializers -O0 $(CFLAGS) $(DEBUG)
+SDB_LDFLAGS=$(LDFLAGS) $(DEBUG)
+SDB_LIBS=
 DEBUG=-g -ggdb
 ARFLAGS=rcs
 
-
-TS_CC=$(QCC)$(CC) $(TS_CFLAGS)
-TS_LD=$(QLD)$(CC) $(TS_LDFLAGS)
+SDB_CC=$(QCC)$(CC) $(SDB_CFLAGS)
+SDB_LD=$(QLD)$(CC) $(SDB_LDFLAGS)

@@ -1,7 +1,5 @@
-# Two Skip
+# Skiplist DB
 
-A two level skip list implementation based on the implementation in
+A two level and a zero level skip list db based on the implementation in
 Cyrus IMAPD.
-
-
 

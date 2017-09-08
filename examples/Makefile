@@ -26,21 +26,21 @@ SKIPLISTDB_INC=../src
 all: $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE)
 
 Makefile.dep:
-	$(TS_CC) -MM *.c > Makefile.dep 2> /dev/null || true
+	$(SDB_CC) -MM *.c > Makefile.dep 2> /dev/null || true
 
 -include Makefile.dep
 
 %.o:  %.c
-	$(TS_CC) -I$(SKIPLISTDB_INC) -c $<
+	$(SDB_CC) -I$(SKIPLISTDB_INC) -c $<
 
 $(TWOSKIP_EXAMPLE): $(TS_OBJS)
-	$(TS_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE)
+	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE)
 
 $(ZEROSKIP_EXAMPLE): $(ZS_OBJS)
-	$(TS_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE)
+	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE)
 
 clean:
-	$(TS_RM) $(TS_OBJS) $(ZS_OBJS) $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE) \
+	$(SDB_RM) $(TS_OBJS) $(ZS_OBJS) $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE) \
 	*.o Makefile.dep
 
 check-syntax:
