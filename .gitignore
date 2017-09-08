@@ -3,5 +3,7 @@
 *.swp
 ts-test
 ts-example
+zs-example
 results/
 Makefile.dep
+*.a
