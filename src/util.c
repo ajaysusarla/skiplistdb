@@ -13,13 +13,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
-enum LAction {
-        Unlock = 0,
-        Lock = 1,
-};
 
 void *xmalloc(size_t size)
 {
@@ -53,7 +49,6 @@ void *xrealloc(void *ptr, size_t size)
 
         return ret;
 }
-
 
 void *xcalloc(size_t nmemb, size_t size)
 {
@@ -138,7 +133,18 @@ int file_rename(const char *oldpath, const char *newpath)
 }
 
 
-static int key(int fd, enum LAction action)
+/**
+ ** File locking/unlocking functions.
+ **/
+enum LockAction {
+        Unlock = 0,
+        Lock = 1,
+};
+
+/*
+ * The 'locker' function. Use the 'locker()' to lock or unlock a file.
+ */
+static int locker(int fd, enum LockAction action)
 {
         struct flock fl;
 
@@ -154,18 +160,76 @@ static int key(int fd, enum LAction action)
 
 /*
   file_lock():
-  returns 0 if mode changed successfully, -1 otherwise.
+  returns 0 if mode changed successfully, errno otherwise.
  */
-int file_lock(const char *file, struct flockctx **ctx)
+int file_lock(int fd, struct flockctx **ctx)
 {
-        return 0;
+        int err = 0;
+        struct flockctx *data;
+        struct stat sb;
+
+        if (fd < 0) {
+                err = errno;
+                goto done;
+        }
+
+        if (fstat(fd, &sb) == -1) {
+                err = errno;
+                goto done;
+        }
+
+        data = xcalloc(1, sizeof(struct flockctx));
+        data->st_dev = sb.st_dev;
+        data->st_ino = sb.st_ino;
+
+        /* TODO:Insert flockdata */
+        /*
+        if (insert_to_table(table, data) != 0) {
+                xfree(data);
+                err = -1;
+                goto done;
+        }
+        */
+
+        if (locker(fd, Lock) == -1) {
+                err = errno;
+                goto done;
+        }
+
+        *ctx =data;
+done:
+        return err;
 }
 
 /*
   file_unlock():
   returns 0 if mode changed successfully, -1 otherwise.
  */
-int file_unlock(const char *file, struct flockctx **ctx)
+int file_unlock(int fd, struct flockctx **ctx)
 {
-        return 0;
+        int err = 0;
+        struct flockctx *data = *ctx;
+
+        if (fd < 0) {
+                err = -1;
+                goto done;
+        }
+
+        /* TODO: Remove flocdata */
+        /*
+        if (remove_from_table(table, data) != 0) {
+                err = -1;
+                goto done;
+        }
+        */
+
+        if (locker(fd, Unlock) == -1) {
+                err = errno;
+                goto done;
+        }
+
+        xfree(data);
+        *ctx = NULL;
+done:
+        return err;
 }

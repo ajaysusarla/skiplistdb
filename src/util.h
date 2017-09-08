@@ -11,10 +11,11 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <limits.h>
+#include <sys/types.h>
 
 #include "macros.h"
 
@@ -131,12 +132,12 @@ int file_rename(const char *oldpath, const char *newpath);
   File Locking
  */
 struct flockctx {
-    int fd;
-    char *file;
+        dev_t st_dev;
+        ino_t st_ino;
 };
 
-int file_lock(const char *file, struct flockctx **ctx);
-int file_unlock(const char *file, struct flockctx **ctx);
+int file_lock(int fd, struct flockctx **ctx);
+int file_unlock(int fd, struct flockctx **ctx);
 
 CPP_GUARD_END
 
