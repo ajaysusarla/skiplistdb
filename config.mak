@@ -16,9 +16,9 @@ ifeq ($(strip $(V)),)
 	QCC = @printf '    %b %b\n' $(CCCOLOUR)CC$(ENDCOLOUR) $(SRCCOLOUR)$@$(ENDCOLOUR) 1>&2;
 	QLD = @printf '    %b %b\n' $(LINKCOLOUR)LINK$(ENDCOLOUR) $(BINCOLOUR)$@$(ENDCOLOUR) 1>&2;
 	QIN = @printf '    %b %b\n' $(LINKCOLOUR)INSTALL$(ENDCOLOUR) $(BINCOLOUR)$@$(ENDCOLOUR) 1>&2;
-	QRM = @printf '    %b %b\n' $(RMCOLOUR)RM$(ENDCOLOUR) $(BINCOLOUR)$@$(ENDCOLOUR) 1>&2;
+	QRM = @printf '    %b\n' $(RMCOLOUR)RM$(ENDCOLOUR) 1>&2;
 	QAR = @printf '    %b %b\n' $(ARCOLOUR)AR$(ENDCOLOUR) $(BINCOLOUR)$@$(ENDCOLOUR) 1>&2;
-	QMKDIR = @printf '    %b %b\n' $(RMCOLOUR)MKDIR$(ENDCOLOUR) $(BINCOLOUR)$@$(ENDCOLOUR) 1>&2;
+	QMKDIR = @printf '    %b\n' $(RMCOLOUR)MKDIR$(ENDCOLOUR) 1>&2;
 else
 	E = @\#
 	Q =

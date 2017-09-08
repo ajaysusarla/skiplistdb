@@ -8,8 +8,8 @@ all: test
 test: clean prep
 
 prep:
-	$(TS_MKDIR) -p '$(TEST_RESULTS_DIR)'
+	$(SDB_MKDIR) -p $(TEST_RESULTS_DIR)
 
 clean:
-	$(TS_RM) '$(TEST_RESULTS_DIR)'
+	$(SDB_RM) $(TEST_RESULTS_DIR)
 
