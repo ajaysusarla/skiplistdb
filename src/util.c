@@ -141,6 +141,11 @@ enum LockAction {
         Lock = 1,
 };
 
+struct flockctx {
+        dev_t st_dev;
+        ino_t st_ino;
+};
+
 /*
  * The 'locker' function. Use the 'locker()' to lock or unlock a file.
  */

@@ -133,10 +133,7 @@ int file_rename(const char *oldpath, const char *newpath);
 /*
   File Locking
  */
-struct flockctx {
-        dev_t st_dev;
-        ino_t st_ino;
-};
+struct flockctx;
 
 int file_lock(int fd, struct flockctx **ctx);
 int file_unlock(int fd, struct flockctx **ctx);
