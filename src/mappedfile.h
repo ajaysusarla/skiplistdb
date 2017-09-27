@@ -22,7 +22,7 @@ CPP_GUARD_START
 struct mappedfile {
         char *filename;
         int fd;
-        unsigned char *ptr;
+        char *ptr;
         size_t size;
         size_t offset;
         uint32_t flags;

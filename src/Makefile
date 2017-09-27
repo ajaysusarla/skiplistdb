@@ -1,5 +1,5 @@
 #skiplistbd library
--include ../config.mak
+-include ../config.mk
 
 # Object files
 SDB_LIBOBJS =           	\

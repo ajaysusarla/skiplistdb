@@ -2,16 +2,20 @@ default: all
 
 .DEFAULT:
 	cd src && $(MAKE) $@
+	cd tools && $(MAKE) $@
 	cd examples && $(MAKE) $@
 
 install:
-	cd src && $(MAKE) $@
+	cd src && $(MAKE)
 
 test:
-	cd tests && $(MAKE) $@
+	cd tests && $(MAKE)
 
 example:
-	cd examples && $(MAKE) $@
+	cd examples && $(MAKE)
+
+tool:
+	cd tools && $(MAKE)
 
 .PHONY:install check-syntax
 

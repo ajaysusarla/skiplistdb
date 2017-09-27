@@ -1,5 +1,5 @@
 # Tests
--include ../config.mak
+-include ../config.mk
 
 TEST_RESULTS_DIR = results
 

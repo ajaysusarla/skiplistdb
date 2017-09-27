@@ -1,5 +1,5 @@
 #examples
--include ../config.mak
+-include ../config.mk
 
 # Object files
 TS_OBJS =           	\
