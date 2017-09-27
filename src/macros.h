@@ -9,6 +9,9 @@
  *
  */
 
+#ifndef _MACROS_H_
+#define _MACROS_H_
+
 #ifdef  __cplusplus
 # define CPP_GUARD_START  extern "C" {
 # define CPP_GUARD_END    }
@@ -16,3 +19,12 @@
 # define CPP_GUARD_START
 # define CPP_GUARD_END
 #endif
+
+
+#if defined __GNUC__ &&  __GNUC__ > 6
+    #define GCC_FALLTHROUGH __attribute__((fallthrough))
+#else
+    #define GCC_FALLTHROUGH /* fall through */
+#endif
+
+#endif  /* _MACROS_H_ */

@@ -33,6 +33,8 @@ char *xstrdup(const char *s);
 void xfree(void *ptr);
 
 
+#define ENSURE_NON_NULL(p) p?p:""
+
 /*
  * ARRAY_SIZE - get the number of elements in a visible array
  *  <at> x: the array whose size you want.

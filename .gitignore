@@ -6,4 +6,5 @@ ts-example
 zs-example
 results/
 Makefile.dep
+*_flymake.*
 *.a

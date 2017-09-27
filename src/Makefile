@@ -2,11 +2,12 @@
 -include ../config.mk
 
 # Object files
-SDB_LIBOBJS =           	\
+SDB_LIBOBJS =          	\
 	cstring.o   	\
 	twoskip.o   	\
 	util.o      	\
 	mappedfile.o 	\
+	htable.o	\
 	$(NULL)
 
 # Headers
@@ -16,6 +17,7 @@ SDB_HDRS =           	\
 	util.h 	    	\
 	macros.h    	\
 	mappedfile.h 	\
+	htable.h	\
 	$(NULL)
 
 all: clean-ar $(AR_LIB_FILE)
