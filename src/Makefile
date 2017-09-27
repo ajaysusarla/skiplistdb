@@ -8,6 +8,7 @@ SDB_LIBOBJS =          	\
 	util.o      	\
 	mappedfile.o 	\
 	htable.o	\
+	skiplistdb.o	\
 	$(NULL)
 
 # Headers
@@ -18,6 +19,7 @@ SDB_HDRS =           	\
 	macros.h    	\
 	mappedfile.h 	\
 	htable.h	\
+	skiplistdb.h	\
 	$(NULL)
 
 all: clean-ar $(AR_LIB_FILE)
