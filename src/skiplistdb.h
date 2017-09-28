@@ -11,12 +11,28 @@
 #ifndef _SKIPLISTDB_H_
 #define _SKIPLISTDB_H_
 
-enum _DBType{
+typedef enum {
         ZERO_SKIP,
         TWO_SKIP,
+} DBType;
+
+/* Return codes */
+enum {
+        SDB_OK             =  0,
+        SDB_DONE           =  1,
+        SDB_IOERROR        = -1,
+        SDB_AGAIN          = -2,
+        SDB_EXISTS         = -3,
+        SDB_INTERNAL       = -4,
+        SDB_NOTFOUND       = -5,
+        SDB_NOTIMPLEMENTED = -6,
+        SDB_FULL           = -7,
 };
 
-typedef enum _DBType DBType;
+/* The following structures are forward declared here. */
+struct db;
+struct txn;
+struct dbengine;
 
 struct skiplistdb {
         const char *name;
@@ -24,9 +40,9 @@ struct skiplistdb {
 
         int (*init)(const char *dbdir, int flags);
         int (*final)(void);
-        int (*open)();
-        int (*close)();
-        int (*sync)();
+        int (*open)(const char *fname, int flags, struct dbengine **dbe, struct txn **tid);
+        int (*close)(struct dbengine *dbe);
+        int (*sync)(void);
         int (*archive)();
         int (*unlink)();
         int (*fetch)();
