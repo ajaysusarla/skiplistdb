@@ -9,6 +9,7 @@ SDB_LIBOBJS =          	\
 	mappedfile.o 	\
 	htable.o	\
 	skiplistdb.o	\
+	strarray.o	\
 	$(NULL)
 
 # Headers
@@ -20,6 +21,7 @@ SDB_HDRS =           	\
 	mappedfile.h 	\
 	htable.h	\
 	skiplistdb.h	\
+	strarray.h	\
 	$(NULL)
 
 all: clean-ar $(AR_LIB_FILE)
