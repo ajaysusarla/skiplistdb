@@ -43,11 +43,11 @@ struct dbengine;
 
 
 /* callback */
-typedef int for_each_p(void *rock,
+typedef int foreach_p(void *rock,
                        const char *key, size_t keylen,
                        const char *data, size_t datalen);
 
-typedef int for_each_cb(void *rock,
+typedef int foreach_cb(void *rock,
                         const char *key, size_t keylen,
                         const char *data, size_t datalen);
 
@@ -55,10 +55,7 @@ typedef int for_each_cb(void *rock,
 /*
  * The interface for the skiplist database backend
  */
-struct skiplistdb {
-        const char *name;
-        DBType type;
-
+struct skiplistdb_operations {
         int (*init)(const char *dbdir, int flags);
         int (*final)(void);
         int (*open)(const char *fname, int flags, struct dbengine **dbe, struct txn **tid);
@@ -73,9 +70,9 @@ struct skiplistdb {
         int (*fetchnext)(struct dbengine *dbe, const char *key, size_t keylen,
                          const char **foundkey, size_t *foundkeylen,
                          const char **data, size_t *datalen, struct txn **tid);
-        int (*for_each)(struct dbengine *dbe,
+        int (*foreach)(struct dbengine *dbe,
                         const char *prefix, size_t prefixlen,
-                        for_each_p *p, for_each_cb *cb, void *rock,
+                        foreach_p *p, foreach_cb *cb, void *rock,
                         struct txn **tid);
         int (*add)(struct dbengine *dbe, const char *key, size_t keylen,
                    const char *data, size_t datalen, struct txn **tid);
@@ -92,6 +89,12 @@ struct skiplistdb {
                    const char *s1, int l1, const char *s2, int l2);
 };
 
+struct skiplistdb {
+        const char *name;
+        DBType type;
+        const struct skiplistdb_operations *ops;
+};
+
 int skiplistdb_init(const char *dbdir, int flags);
 int skiplistdb_final(void);
 int skiplistdb_open(const char *fname, int flags, struct dbengine **dbe, struct txn **tid);
@@ -106,10 +109,10 @@ int skilistdb_fetchlock(struct dbengine *dbe, const char *key, size_t keylen,
 int skiplistdb_fetchnext(struct dbengine *dbe, const char *key, size_t keylen,
                          const char **foundkey, size_t *foundkeylen,
                          const char **data, size_t *datalen, struct txn **tid);
-int skiplistdb_for_each(struct dbengine *dbe,
-                        const char *prefix, size_t prefixlen,
-                        for_each_p *p, for_each_cb *cb, void *rock,
-                        struct txn **tid);
+int skiplistdb_foreach(struct dbengine *dbe,
+                       const char *prefix, size_t prefixlen,
+                       foreach_p *p, foreach_cb *cb, void *rock,
+                       struct txn **tid);
 int skiplistdb_add(struct dbengine *dbe, const char *key, size_t keylen,
                    const char *data, size_t datalen, struct txn **tid);
 int skiplistbd_remove(struct dbengine *dbe, const char *key, size_t keylen,
@@ -123,6 +126,7 @@ int skiplistdb_consistent(struct dbengine *dbe);
 int skiplistdb_repack(struct dbengine *dbe);
 int skiplistdb_cmp(struct dbengine *dbe,
                    const char *s1, int l1, const char *s2, int l2);
+
 
 /* Utility functions for skiplistdb */
 

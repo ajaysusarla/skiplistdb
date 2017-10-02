@@ -67,10 +67,10 @@ int skiplistdb_fetchnext(struct dbengine *dbe, const char *key, size_t keylen,
         return 0;
 }
 
-int skiplistdb_for_each(struct dbengine *dbe,
-                        const char *prefix, size_t prefixlen,
-                        for_each_p *p, for_each_cb *cb, void *rock,
-                        struct txn **tid)
+int skiplistdb_foreach(struct dbengine *dbe,
+                       const char *prefix, size_t prefixlen,
+                       foreach_p *p, foreach_cb *cb, void *rock,
+                       struct txn **tid)
 {
         return 0;
 }
