@@ -5,121 +5,191 @@
  * skiplistdb is free software; you can redistribute it and/or modify
  * it under the terms of the MIT license. See LICENSE for details.
  *
- * Copyright (c) 2017 Partha Susarla <mail@spartha.org>
  */
 
 #include "skiplistdb.h"
 
-
-
-int skiplistdb_init(const char *dbdir, int flags)
+int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags)
 {
-        return 0;
+        if (db->op->init)
+                return db->op->init(db, dbdir, flags);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_final(void)
+int skiplistdb_final(struct skiplistdb *db)
 {
-        return 0;
+        if (db->op->final)
+                return db->op->final(db);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_open(const char *fname, int flags, struct dbengine **dbe,
+int skiplistdb_open(struct skiplistdb *db, const char *fname, int flags,
                     struct txn **tid)
 {
-        return 0;
+        if (db->op->open)
+                return db->op->open(db, fname, flags, tid);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_close(struct dbengine *dbe)
+int skiplistdb_close(struct skiplistdb *db)
 {
-        return 0;
+        if (db->op->close)
+                return db->op->close(db);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_sync(void)
+int skiplistdb_sync(struct skiplistdb *db)
 {
-        return 0;
+        if (db->op->sync)
+                return db->op->sync(db);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_archive(const struct str_array *fnames, const char *dirname)
+int skiplistdb_archive(struct skiplistdb *db, const struct str_array *fnames,
+                       const char *dirname)
 {
-        return 0;
+        if (db->op->archive)
+                return db->op->archive(db, fnames, dirname);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_unlink(const char *fname, int flags)
+int skiplistdb_unlink(struct skiplistdb *db, const char *fname, int flags)
 {
-        return 0;
+        if (db->op->unlink)
+                return db->op->unlink(db, fname, flags);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_fetch(struct dbengine *dbe, const char *key, size_t keylen,
-                     const char **data, size_t *datalen, struct txn **tid)
+int skiplistdb_fetch(struct skiplistdb *db,
+                     const char *key, size_t keylen,
+                     const char **data, size_t *datalen,
+                     struct txn **tid)
 {
-        return 0;
+        if (db->op->fetch)
+                return db->op->fetch(db, key, keylen, data, datalen, tid);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skilistdb_fetchlock(struct dbengine *dbe, const char *key, size_t keylen,
-                        const char **data, size_t *datalen, struct txn **tid)
+int skilistdb_fetchlock(struct skiplistdb *db,
+                        const char *key, size_t keylen,
+                        const char **data, size_t *datalen,
+                        struct txn **tid)
 {
-        return 0;
+        if (db->op->fetchlock)
+                return db->op->fetchlock(db, key, keylen, data, datalen, tid);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_fetchnext(struct dbengine *dbe, const char *key, size_t keylen,
+int skiplistdb_fetchnext(struct skiplistdb *db,
+                         const char *key, size_t keylen,
                          const char **foundkey, size_t *foundkeylen,
-                         const char **data, size_t *datalen, struct txn **tid)
+                         const char **data, size_t *datalen,
+                         struct txn **tid)
 {
-        return 0;
+        if (db->op->fetchnext)
+                return db->op->fetchnext(db, key, keylen, foundkey,
+                                         foundkeylen, data, datalen, tid);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_foreach(struct dbengine *dbe,
+int skiplistdb_foreach(struct skiplistdb *db,
                        const char *prefix, size_t prefixlen,
                        foreach_p *p, foreach_cb *cb, void *rock,
                        struct txn **tid)
 {
-        return 0;
+        if (db->op->foreach)
+                return db->op->foreach(db, prefix, prefixlen, p, cb, rock, tid);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_add(struct dbengine *dbe, const char *key, size_t keylen,
-                   const char *data, size_t datalen, struct txn **tid)
+int skiplistdb_add(struct skiplistdb *db,
+                   const char *key, size_t keylen,
+                   const char *data, size_t datalen,
+                   struct txn **tid)
 {
-        return 0;
+        if (db->op->add)
+                return db->op->add(db, key, keylen, data, datalen, tid);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistbd_remove(struct dbengine *dbe, const char *key, size_t keylen,
+int skiplistdb_remove(struct skiplistdb *db,
+                      const char *key, size_t keylen,
                       struct txn **tid, int force)
 {
-        return 0;
+        if (db->op->remove)
+                return db->op->remove(db, key, keylen, tid, force);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_store(struct dbengine *dbe, const char *key, size_t keylen,
-                     const char *data, size_t datalen, struct txn **tid)
+int skiplistdb_store(struct skiplistdb *db,
+                     const char *key, size_t keylen,
+                     const char *data, size_t datalen,
+                     struct txn **tid)
 {
-        return 0;
+        if (db->op->store)
+                return db->op->store(db, key, keylen, data, datalen, tid);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_commit(struct dbengine *dbe, struct txn **tid)
+int skiplistdb_commit(struct skiplistdb *db, struct txn **tid)
 {
-        return 0;
+        if (db->op->commit)
+                return db->op->commit(db, tid);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_abort(struct dbengine *dbe, struct txn **tid)
+int skiplistdb_abort(struct skiplistdb *db, struct txn **tid)
 {
-        return 0;
+        if (db->op->abort)
+                return db->op->abort(db, tid);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_dump(struct dbengine *dbe, DBDumpLevel level)
+int skiplistdb_dump(struct skiplistdb *db, DBDumpLevel level)
 {
-        return 0;
+        if (db->op->dump)
+                return db->op->dump(db, level);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_consistent(struct dbengine *dbe)
+int skiplistdb_consistent(struct skiplistdb *db)
 {
-        return 0;
+        if (db->op->consistent)
+                return db->op->consistent(db);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_repack(struct dbengine *dbe)
+int skiplistdb_repack(struct skiplistdb *db)
 {
-        return 0;
+        if (db->op->repack)
+                return db->op->repack(db);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_cmp(struct dbengine *dbe,
+int skiplistdb_cmp(struct skiplistdb *db,
                    const char *s1, int l1, const char *s2, int l2)
 {
-        return 0;
+        if (db->op->cmp)
+                return db->op->cmp(db, s1, l1, s2, l2);
+        else
+                return SDB_NOTIMPLEMENTED;
 }

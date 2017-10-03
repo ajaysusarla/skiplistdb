@@ -36,11 +36,10 @@ enum {
         SDB_FULL           = -7,
 };
 
-/* The following structures are forward declared here. */
 struct db;
 struct txn;
 struct dbengine;
-
+struct skiplistdb;
 
 /* callback */
 typedef int foreach_p(void *rock,
@@ -56,75 +55,92 @@ typedef int foreach_cb(void *rock,
  * The interface for the skiplist database backend
  */
 struct skiplistdb_operations {
-        int (*init)(const char *dbdir, int flags);
-        int (*final)(void);
-        int (*open)(const char *fname, int flags, struct dbengine **dbe, struct txn **tid);
-        int (*close)(struct dbengine *dbe);
-        int (*sync)(void);
-        int (*archive)(const struct str_array *fnames, const char *dirname);
-        int (*unlink)(const char *fname, int flags);
-        int (*fetch)(struct dbengine *dbe, const char *key, size_t keylen,
+        int (*init)(struct skiplistdb *db, const char *dbdir, int flags);
+        int (*final)(struct skiplistdb *db);
+        int (*open)(struct skiplistdb *db, const char *fname, int flags, struct txn **tid);
+        int (*close)(struct skiplistdb *db);
+        int (*sync)(struct skiplistdb *db);
+        int (*archive)(struct skiplistdb *db, const struct str_array *fnames, const char *dirname);
+        int (*unlink)(struct skiplistdb *db, const char *fname, int flags);
+        int (*fetch)(struct skiplistdb *db, const char *key, size_t keylen,
                      const char **data, size_t *datalen, struct txn **tid);
-        int (*fetchlock)(struct dbengine *dbe, const char *key, size_t keylen,
+        int (*fetchlock)(struct skiplistdb *db, const char *key, size_t keylen,
                          const char **data, size_t *datalen, struct txn **tid);
-        int (*fetchnext)(struct dbengine *dbe, const char *key, size_t keylen,
+        int (*fetchnext)(struct skiplistdb *db, const char *key, size_t keylen,
                          const char **foundkey, size_t *foundkeylen,
                          const char **data, size_t *datalen, struct txn **tid);
-        int (*foreach)(struct dbengine *dbe,
+        int (*foreach)(struct skiplistdb *db,
                         const char *prefix, size_t prefixlen,
                         foreach_p *p, foreach_cb *cb, void *rock,
                         struct txn **tid);
-        int (*add)(struct dbengine *dbe, const char *key, size_t keylen,
+        int (*add)(struct skiplistdb *db, const char *key, size_t keylen,
                    const char *data, size_t datalen, struct txn **tid);
-        int (*remove)(struct dbengine *dbe, const char *key, size_t keylen,
+        int (*remove)(struct skiplistdb *db, const char *key, size_t keylen,
                       struct txn **tid, int force);
-        int (*store)(struct dbengine *dbe, const char *key, size_t keylen,
+        int (*store)(struct skiplistdb *db, const char *key, size_t keylen,
                      const char *data, size_t datalen, struct txn **tid);
-        int (*commit)(struct dbengine *dbe, struct txn **tid);
-        int (*abort)(struct dbengine *dbe, struct txn **tid);
-        int (*dump)(struct dbengine *dbe, DBDumpLevel level);
-        int (*consistent)(struct dbengine *dbe);
-        int (*repack)(struct dbengine *dbe);
-        int (*cmp)(struct dbengine *dbe,
+        int (*commit)(struct skiplistdb *db, struct txn **tid);
+        int (*abort)(struct skiplistdb *db, struct txn **tid);
+        int (*dump)(struct skiplistdb *db, DBDumpLevel level);
+        int (*consistent)(struct skiplistdb *db);
+        int (*repack)(struct skiplistdb *db);
+        int (*cmp)(struct skiplistdb *db,
                    const char *s1, int l1, const char *s2, int l2);
 };
 
 struct skiplistdb {
         const char *name;
         DBType type;
-        const struct skiplistdb_operations *ops;
+        struct dbengine *dbe;
+        const struct skiplistdb_operations *op;
 };
 
-int skiplistdb_init(const char *dbdir, int flags);
-int skiplistdb_final(void);
-int skiplistdb_open(const char *fname, int flags, struct dbengine **dbe, struct txn **tid);
-int skiplistdb_close(struct dbengine *dbe);
-int skiplistdb_sync(void);
-int skiplistdb_archive(const struct str_array *fnames, const char *dirname);
-int skiplistdb_unlink(const char *fname, int flags);
-int skiplistdb_fetch(struct dbengine *dbe, const char *key, size_t keylen,
-                     const char **data, size_t *datalen, struct txn **tid);
-int skilistdb_fetchlock(struct dbengine *dbe, const char *key, size_t keylen,
-                        const char **data, size_t *datalen, struct txn **tid);
-int skiplistdb_fetchnext(struct dbengine *dbe, const char *key, size_t keylen,
+int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags);
+int skiplistdb_final(struct skiplistdb *db);
+int skiplistdb_open(struct skiplistdb *db, const char *fname, int flags,
+                    struct txn **tid);
+int skiplistdb_close(struct skiplistdb *db);
+int skiplistdb_sync(struct skiplistdb *db);
+int skiplistdb_archive(struct skiplistdb *db, const struct str_array *fnames,
+                       const char *dirname);
+int skiplistdb_unlink(struct skiplistdb *db, const char *fname, int flags);
+int skiplistdb_fetch(struct skiplistdb *db,
+                     const char *key, size_t keylen,
+                     const char **data, size_t *datalen,
+                     struct txn **tid);
+int skilistdb_fetchlock(struct skiplistdb *db,
+                        const char *key, size_t keylen,
+                        const char **data, size_t *datalen,
+                        struct txn **tid);
+int skiplistdb_fetchnext(struct skiplistdb *db,
+                         const char *key, size_t keylen,
                          const char **foundkey, size_t *foundkeylen,
-                         const char **data, size_t *datalen, struct txn **tid);
-int skiplistdb_foreach(struct dbengine *dbe,
+                         const char **data, size_t *datalen,
+                         struct txn **tid);
+int skiplistdb_foreach(struct skiplistdb *db,
                        const char *prefix, size_t prefixlen,
                        foreach_p *p, foreach_cb *cb, void *rock,
                        struct txn **tid);
-int skiplistdb_add(struct dbengine *dbe, const char *key, size_t keylen,
-                   const char *data, size_t datalen, struct txn **tid);
-int skiplistbd_remove(struct dbengine *dbe, const char *key, size_t keylen,
+int skiplistdb_add(struct skiplistdb *db,
+                   const char *key, size_t keylen,
+                   const char *data, size_t datalen,
+                   struct txn **tid);
+int skiplistdb_remove(struct skiplistdb *db,
+                      const char *key, size_t keylen,
                       struct txn **tid, int force);
-int skiplistdb_store(struct dbengine *dbe, const char *key, size_t keylen,
-                     const char *data, size_t datalen, struct txn **tid);
-int skiplistdb_commit(struct dbengine *dbe, struct txn **tid);
-int skiplistdb_abort(struct dbengine *dbe, struct txn **tid);
-int skiplistdb_dump(struct dbengine *dbe, DBDumpLevel level);
-int skiplistdb_consistent(struct dbengine *dbe);
-int skiplistdb_repack(struct dbengine *dbe);
-int skiplistdb_cmp(struct dbengine *dbe,
+int skiplistdb_store(struct skiplistdb *db,
+                     const char *key, size_t keylen,
+                     const char *data, size_t datalen,
+                     struct txn **tid);
+int skiplistdb_commit(struct skiplistdb *db,
+                      struct txn **tid);
+int skiplistdb_abort(struct skiplistdb *db,
+                     struct txn **tid);
+int skiplistdb_dump(struct skiplistdb *db,
+                    DBDumpLevel level);
+int skiplistdb_consistent(struct skiplistdb *db);
+int skiplistdb_repack(struct skiplistdb *db);
+int skiplistdb_cmp(struct skiplistdb *db,
                    const char *s1, int l1, const char *s2, int l2);
 
 
