@@ -5,6 +5,7 @@
 SDB_LIBOBJS =          	\
 	cstring.o   	\
 	twoskip.o   	\
+	zeroskip.o	\
 	util.o      	\
 	mappedfile.o 	\
 	htable.o	\
@@ -16,6 +17,7 @@ SDB_LIBOBJS =          	\
 SDB_HDRS =           	\
 	cstring.h   	\
 	twoskip.h   	\
+	zeroskip.h	\
 	util.h 	    	\
 	macros.h    	\
 	mappedfile.h 	\

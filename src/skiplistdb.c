@@ -9,6 +9,10 @@
 
 #include "skiplistdb.h"
 
+static struct skiplistdb db_backends[] = {
+        NULL,
+};
+
 int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags)
 {
         if (db->op->init)
@@ -192,4 +196,9 @@ int skiplistdb_cmp(struct skiplistdb *db,
                 return db->op->cmp(db, s1, l1, s2, l2);
         else
                 return SDB_NOTIMPLEMENTED;
+}
+
+int skiplistdb_backends(void)
+{
+        return 0;
 }

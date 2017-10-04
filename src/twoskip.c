@@ -126,82 +126,161 @@ struct tsdb_list {
         int refcount;
 };
 
-int tsdb_open(const char *fname __attribute__((unused)))
+
+int ts_init(struct skiplistdb *db, const char *dbdir, int flags)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_close(void)
+int ts_final(struct skiplistdb *db)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_fetch(void)
+int ts_open(struct skiplistdb *db, const char *fname, int flags,
+                    struct txn **tid)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_fetchnext(void)
+int ts_close(struct skiplistdb *db)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_foreach(void)
+int ts_sync(struct skiplistdb *db)
 {
-        return 0;
+        if (db->op->sync)
+                return db->op->sync(db);
+        else
+                return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_forone(void)
+int ts_archive(struct skiplistdb *db, const struct str_array *fnames,
+               const char *dirname)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_create(void)
+int ts_unlink(struct skiplistdb *db, const char *fname, int flags)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_add(void)
+int ts_fetch(struct skiplistdb *db,
+             const char *key, size_t keylen,
+             const char **data, size_t *datalen,
+             struct txn **tid)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_delete(void)
+int ts_fetchlock(struct skiplistdb *db,
+                 const char *key, size_t keylen,
+                 const char **data, size_t *datalen,
+                 struct txn **tid)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_commit(void)
+int ts_fetchnext(struct skiplistdb *db,
+                 const char *key, size_t keylen,
+                 const char **foundkey, size_t *foundkeylen,
+                 const char **data, size_t *datalen,
+                 struct txn **tid)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_abort(void)
+int ts_foreach(struct skiplistdb *db,
+               const char *prefix, size_t prefixlen,
+               foreach_p *p, foreach_cb *cb, void *rock,
+               struct txn **tid)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_dump(void)
+int ts_add(struct skiplistdb *db,
+           const char *key, size_t keylen,
+           const char *data, size_t datalen,
+           struct txn **tid)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_consistent(void)
+int ts_remove(struct skiplistdb *db,
+              const char *key, size_t keylen,
+              struct txn **tid, int force)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_repack(void)
+int ts_store(struct skiplistdb *db,
+             const char *key, size_t keylen,
+             const char *data, size_t datalen,
+             struct txn **tid)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsdb_init(void)
+int ts_commit(struct skiplistdb *db, struct txn **tid)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
 
-int tsbd_done(void)
+int ts_abort(struct skiplistdb *db, struct txn **tid)
 {
-        return 0;
+        return SDB_NOTIMPLEMENTED;
 }
+
+int ts_dump(struct skiplistdb *db, DBDumpLevel level)
+{
+        return SDB_NOTIMPLEMENTED;
+}
+
+int ts_consistent(struct skiplistdb *db)
+{
+        return SDB_NOTIMPLEMENTED;
+}
+
+int ts_repack(struct skiplistdb *db)
+{
+        return SDB_NOTIMPLEMENTED;
+}
+
+int ts_cmp(struct skiplistdb *db,
+           const char *s1, int l1, const char *s2, int l2)
+{
+        return SDB_NOTIMPLEMENTED;
+}
+
+/* The operations structure */
+static const struct skiplistdb_operations twoskip_ops = {
+        .init         = ts_init,
+        .final        = ts_final,
+        .open         = ts_open,
+        .close        = ts_close,
+        .sync         = ts_sync,
+        .archive      = ts_archive,
+        .unlink       = ts_unlink,
+        .fetch        = ts_fetch,
+        .fetchlock    = ts_fetchlock,
+        .fetchnext    = ts_fetchnext,
+        .foreach      = ts_foreach,
+        .add          = ts_add,
+        .remove       = ts_remove,
+        .store        = ts_store,
+        .commit       = ts_commit,
+        .abort        = ts_abort,
+        .dump         = ts_dump,
+        .consistent   = ts_consistent,
+        .repack       = ts_repack,
+        .cmp          = ts_cmp,
+};
+
+struct skiplistdb twoskip = {
+        .name    = "twoskip",
+        .type    = TWO_SKIP,
+        .dbe     = NULL,
+        .op      = &twoskip_ops,
+};

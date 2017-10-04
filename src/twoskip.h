@@ -13,6 +13,8 @@
 
 #include "macros.h"
 
+#include "skiplistdb.h"
+
 CPP_GUARD_START
 
 typedef enum rectype {
