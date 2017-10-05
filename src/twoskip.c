@@ -12,6 +12,7 @@
 #include "cstring.h"
 #include "util.h"
 #include "mappedfile.h"
+#include "htable.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -112,6 +113,7 @@ struct tsloc {
 
 struct tsdb_priv {
         struct mappedfile *mf;
+        HashTable *ht;
         struct db_header header;
         struct tsloc loc;
 
@@ -260,6 +262,39 @@ static int ts_cmp(struct skiplistdb *db,
         return SDB_NOTIMPLEMENTED;
 }
 
+/* Hash table */
+unsigned int hash_fn(const void *keyp)
+{
+        unsigned long key = (unsigned long)keyp;
+
+        key = murmur3_hash_32(&key, sizeof(key));
+
+        key += ~(key << 15);
+        key ^=  (key >> 10);
+        key +=  (key << 3);
+        key ^=  (key >> 6);
+        key += ~(key << 11);
+        key ^=  (key >> 16);
+
+        return key;
+}
+
+int key_cmp_fn(const void *key1, const void *key2)
+{
+        unsigned long k1 = (unsigned long)key1;
+        unsigned long k2 = (unsigned long)key2;
+
+        return k1 == k2;
+}
+
+HashProps hash_props_long = {
+        hash_fn,
+        key_cmp_fn,
+        NULL,
+        NULL,
+        NULL,
+        NULL
+};
 /* The operations structure */
 static const struct skiplistdb_operations twoskip_ops = {
         .init         = ts_init,
@@ -288,6 +323,7 @@ static const struct skiplistdb_operations twoskip_ops = {
 struct skiplistdb * twoskip_new(void)
 {
         struct skiplistdb *db = NULL;
+        struct tsdb_priv *priv = NULL;
 
         db = xcalloc(1, sizeof(struct skiplistdb));
         if (!db) {
@@ -300,13 +336,17 @@ struct skiplistdb * twoskip_new(void)
         db->op = &twoskip_ops;
 
         /* Allocate the private data structure */
-        db->priv = xcalloc(1, sizeof(struct tsdb_priv));
-        if (!db->priv) {
+        priv = xcalloc(1, sizeof(struct tsdb_priv));
+        if (!priv) {
                 fprintf(stderr, "Error allocating memory for private data\n");
                 xfree(db);
                 goto done;
         }
 
+        /* Setup hashtable for tracking open db files */
+        priv->ht = ht_new(&hash_props_long);
+
+        db->priv = priv;
 done:
         return db;
 }

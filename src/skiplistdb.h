@@ -37,7 +37,7 @@ enum {
 };
 
 struct txn;
-struct dbengine;
+struct dbdata;
 struct skiplistdb;
 
 /* callback */
