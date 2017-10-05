@@ -11,24 +11,16 @@
 
 #include "cstring.h"
 #include "util.h"
+#include "mappedfile.h"
 
 #include <stdio.h>
 #include <stdint.h>
 
-/* static const char *HEADER_MAGIC = "\241\002\213\015twoskip file\0\0\0\0"; */
-/* static const int   HEADER_MAGIC_SIZE = 20; */
 /*
  * TS_MALXLEVEL: Number of skiplist levels - 31.
  * This gives us binary search for 2^32 records. Limited to 255 by file format.
  */
 #define TS_MAXLEVEL 31
-
-/**
- * Trasaction structure
- **/
-struct txn {
-        int num;
-};
 
 /**
  *  Twoskip DB Header
@@ -44,6 +36,13 @@ enum {
         OFFSET_CRC32         = 60,
 };
 
+typedef enum rectype {
+        DUMMY  = '=',
+        ADD    = '+',
+        DELETE = '-',
+        COMMIT = '$',
+} RecType;
+
 struct db_header {
         uint32_t version;
         uint32_t flags;
@@ -53,7 +52,18 @@ struct db_header {
         size_t   current_size;
 };
 
+static const char *TS_HEADER_MAGIC = "\241\002\213\015twoskip file\0\0\0\0";
+static const int   TS_HEADER_MAGIC_SIZE = 20;
 #define TS_HEADER_SIZE 64
+#define DUMMY_OFFSET TS_HEADER_SIZE
+#define MAXRECORDHEAD ((TS_MAXLEVEL + 5) * 8)
+
+/**
+ * Trasaction structure
+ **/
+struct txn {
+        int num;
+};
 
 /**
  * The structure of each record in Twoskip DB.
@@ -100,8 +110,8 @@ struct tsloc {
         size_t end;
 };
 
-struct tsdb_engine {
-        /* FILE *f */   /* XXX: Need a lockable mapped file interface here*/
+struct tsdb_priv {
+        struct mappedfile *mf;
         struct db_header header;
         struct tsloc loc;
 
@@ -116,10 +126,6 @@ struct tsdb_engine {
         int (*compare)(const char *s1, int l1, const char *s2, int l2);
 };
 
-struct tsdb {
-        struct tsdb_engine *engine;
-};
-
 struct tsdb_list {
         struct tsdb_engine *engine;
         struct tsdb_list *next;
@@ -127,28 +133,28 @@ struct tsdb_list {
 };
 
 
-int ts_init(struct skiplistdb *db, const char *dbdir, int flags)
+static int ts_init(struct skiplistdb *db, const char *dbdir, int flags)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_final(struct skiplistdb *db)
+static int ts_final(struct skiplistdb *db)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_open(struct skiplistdb *db, const char *fname, int flags,
+static int ts_open(struct skiplistdb *db, const char *fname, int flags,
                     struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_close(struct skiplistdb *db)
+static int ts_close(struct skiplistdb *db)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_sync(struct skiplistdb *db)
+static int ts_sync(struct skiplistdb *db)
 {
         if (db->op->sync)
                 return db->op->sync(db);
@@ -156,18 +162,18 @@ int ts_sync(struct skiplistdb *db)
                 return SDB_NOTIMPLEMENTED;
 }
 
-int ts_archive(struct skiplistdb *db, const struct str_array *fnames,
+static int ts_archive(struct skiplistdb *db, const struct str_array *fnames,
                const char *dirname)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_unlink(struct skiplistdb *db, const char *fname, int flags)
+static int ts_unlink(struct skiplistdb *db, const char *fname, int flags)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_fetch(struct skiplistdb *db,
+static int ts_fetch(struct skiplistdb *db,
              const char *key, size_t keylen,
              const char **data, size_t *datalen,
              struct txn **tid)
@@ -175,7 +181,7 @@ int ts_fetch(struct skiplistdb *db,
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_fetchlock(struct skiplistdb *db,
+static int ts_fetchlock(struct skiplistdb *db,
                  const char *key, size_t keylen,
                  const char **data, size_t *datalen,
                  struct txn **tid)
@@ -183,7 +189,7 @@ int ts_fetchlock(struct skiplistdb *db,
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_fetchnext(struct skiplistdb *db,
+static int ts_fetchnext(struct skiplistdb *db,
                  const char *key, size_t keylen,
                  const char **foundkey, size_t *foundkeylen,
                  const char **data, size_t *datalen,
@@ -192,7 +198,7 @@ int ts_fetchnext(struct skiplistdb *db,
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_foreach(struct skiplistdb *db,
+static int ts_foreach(struct skiplistdb *db,
                const char *prefix, size_t prefixlen,
                foreach_p *p, foreach_cb *cb, void *rock,
                struct txn **tid)
@@ -200,7 +206,7 @@ int ts_foreach(struct skiplistdb *db,
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_add(struct skiplistdb *db,
+static int ts_add(struct skiplistdb *db,
            const char *key, size_t keylen,
            const char *data, size_t datalen,
            struct txn **tid)
@@ -208,14 +214,14 @@ int ts_add(struct skiplistdb *db,
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_remove(struct skiplistdb *db,
+static int ts_remove(struct skiplistdb *db,
               const char *key, size_t keylen,
               struct txn **tid, int force)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_store(struct skiplistdb *db,
+static int ts_store(struct skiplistdb *db,
              const char *key, size_t keylen,
              const char *data, size_t datalen,
              struct txn **tid)
@@ -223,32 +229,32 @@ int ts_store(struct skiplistdb *db,
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_commit(struct skiplistdb *db, struct txn **tid)
+static int ts_commit(struct skiplistdb *db, struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_abort(struct skiplistdb *db, struct txn **tid)
+static int ts_abort(struct skiplistdb *db, struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_dump(struct skiplistdb *db, DBDumpLevel level)
+static int ts_dump(struct skiplistdb *db, DBDumpLevel level)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_consistent(struct skiplistdb *db)
+static int ts_consistent(struct skiplistdb *db)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_repack(struct skiplistdb *db)
+static int ts_repack(struct skiplistdb *db)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-int ts_cmp(struct skiplistdb *db,
+static int ts_cmp(struct skiplistdb *db,
            const char *s1, int l1, const char *s2, int l2)
 {
         return SDB_NOTIMPLEMENTED;
@@ -278,9 +284,40 @@ static const struct skiplistdb_operations twoskip_ops = {
         .cmp          = ts_cmp,
 };
 
-struct skiplistdb twoskip = {
-        .name    = "twoskip",
-        .type    = TWO_SKIP,
-        .dbe     = NULL,
-        .op      = &twoskip_ops,
-};
+
+struct skiplistdb * twoskip_new(void)
+{
+        struct skiplistdb *db = NULL;
+
+        db = xcalloc(1, sizeof(struct skiplistdb));
+        if (!db) {
+                fprintf(stderr, "Error allocating memory\n");
+                goto done;
+        }
+
+        db->name = "twoskip";
+        db->type = TWO_SKIP;
+        db->op = &twoskip_ops;
+
+        /* Allocate the private data structure */
+        db->priv = xcalloc(1, sizeof(struct tsdb_priv));
+        if (!db->priv) {
+                fprintf(stderr, "Error allocating memory for private data\n");
+                xfree(db);
+                goto done;
+        }
+
+done:
+        return db;
+}
+
+
+void twoskip_free(struct skiplistdb *db)
+{
+        if (db && db->priv) {
+                xfree(db->priv);
+                xfree(db);
+        }
+
+        return;
+}

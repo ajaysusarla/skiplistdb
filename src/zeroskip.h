@@ -13,9 +13,11 @@
 #include "macros.h"
 #include "skiplistdb.h"
 
+CPP_GUARD_START
 
-/* CPP_GUARD_START */
+struct skiplistdb * zeroskip_new(void);
+void zeroskip_free(struct skiplistdb *db);
 
-/* CPP_GAURD_END */
+CPP_GUARD_END
 
 #endif  /* _ZEROSKIP_H_ */

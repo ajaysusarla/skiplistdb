@@ -16,10 +16,5 @@
 
 int main(int argc __attribute__((unused)), char **argv __attribute__((unused)))
 {
-        RecType t;
-
-        t = COMMIT;
-        printf("type: %c\n", t);
-
         exit(EXIT_SUCCESS);
 }

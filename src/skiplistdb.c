@@ -9,6 +9,12 @@
 
 #include "skiplistdb.h"
 
+extern struct skiplistdb * zeroskip_new(void);
+extern void zeroskip_free(struct skiplistdb *db);
+extern struct skiplistdb * twoskip_new(void);
+extern void twoskip_free(struct skiplistdb *db);
+
+
 static struct skiplistdb db_backends[] = {
         NULL,
 };
@@ -201,4 +207,43 @@ int skiplistdb_cmp(struct skiplistdb *db,
 int skiplistdb_backends(void)
 {
         return 0;
+}
+
+struct skiplistdb *skiplistdb_new(DBType type)
+{
+        struct skiplistdb *db = NULL;
+
+        switch (type) {
+        case ZERO_SKIP:
+                db = zeroskip_new();
+                break;
+        case TWO_SKIP:
+                db = twoskip_new();
+                break;
+        default:
+                fprintf(stderr, "Unknown db type");
+                break;
+        }
+
+        return db;
+}
+
+void skiplistdb_free(struct skiplistdb *db)
+{
+        if (!db)
+                return;
+
+        switch (db->type) {
+        case ZERO_SKIP:
+                zeroskip_free(db);
+                break;
+        case TWO_SKIP:
+                twoskip_free(db);
+                break;
+        default:
+                fprintf(stderr, "Unknown db type");
+                break;
+        }
+
+        return;
 }

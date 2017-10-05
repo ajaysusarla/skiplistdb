@@ -17,12 +17,8 @@
 
 CPP_GUARD_START
 
-typedef enum rectype {
-        DUMMY  = '=',
-        ADD    = '+',
-        DELETE = '-',
-        COMMIT = '$',
-} RecType;
+struct skiplistdb * twoskip_new(void);
+void twoskip_free(struct skiplistdb *db);
 
 CPP_GUARD_END
 

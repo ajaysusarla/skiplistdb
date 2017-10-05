@@ -36,7 +36,6 @@ enum {
         SDB_FULL           = -7,
 };
 
-struct db;
 struct txn;
 struct dbengine;
 struct skiplistdb;
@@ -91,8 +90,8 @@ struct skiplistdb_operations {
 struct skiplistdb {
         const char *name;
         DBType type;
-        struct dbengine *dbe;
         const struct skiplistdb_operations *op;
+        void *priv;
 };
 
 int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags);
@@ -145,5 +144,7 @@ int skiplistdb_cmp(struct skiplistdb *db,
 
 
 /* Utility functions for skiplistdb */
+struct skiplistdb *skiplistdb_new(DBType type);
+void skiplistdb_free(struct skiplistdb *db);
 
 #endif  /* _SKIPLISTDB_H_ */
