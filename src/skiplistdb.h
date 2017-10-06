@@ -19,6 +19,13 @@ typedef enum {
 } DBType;
 
 typedef enum {
+        DB_OPEN,
+        DB_CLOSE,
+        DB_INIT,
+        DB_LOCKED,
+} DBState;
+
+typedef enum {
         DB_SHORT,
         DB_LONG,
 } DBDumpLevel;
@@ -64,7 +71,7 @@ typedef int foreach_cb(void *rock,
 struct skiplistdb_operations {
         int (*init)(struct skiplistdb *db, const char *dbdir, int flags);
         int (*final)(struct skiplistdb *db);
-        int (*open)(struct skiplistdb *db, const char *fname, int flags, struct txn **tid);
+        int (*open)(const char *fname, int flags, struct skiplistdb **db, struct txn **tid);
         int (*close)(struct skiplistdb *db);
         int (*sync)(struct skiplistdb *db);
         int (*archive)(struct skiplistdb *db, const struct str_array *fnames, const char *dirname);
@@ -104,8 +111,8 @@ struct skiplistdb {
 
 int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags);
 int skiplistdb_final(struct skiplistdb *db);
-int skiplistdb_open(struct skiplistdb *db, const char *fname, int flags,
-                    struct txn **tid);
+int skiplistdb_open(const char *fname, int flags, DBType type,
+                    struct skiplistdb **db, struct txn **tid);
 int skiplistdb_close(struct skiplistdb *db);
 int skiplistdb_sync(struct skiplistdb *db);
 int skiplistdb_archive(struct skiplistdb *db, const struct str_array *fnames,
@@ -152,7 +159,5 @@ int skiplistdb_cmp(struct skiplistdb *db,
 
 
 /* Utility functions for skiplistdb */
-struct skiplistdb *skiplistdb_new(DBType type);
-void skiplistdb_free(struct skiplistdb *db);
 
 #endif  /* _SKIPLISTDB_H_ */

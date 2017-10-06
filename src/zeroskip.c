@@ -36,8 +36,8 @@ static int zs_final(struct skiplistdb *db)
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_open(struct skiplistdb *db, const char *fname, int flags,
-                    struct txn **tid)
+static int zs_open(const char *fname, int flags,
+                   struct skiplistdb **db, struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }

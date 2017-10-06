@@ -19,6 +19,51 @@ static struct skiplistdb db_backends[] = {
         NULL,
 };
 
+/*
+ * Internal functions
+ */
+static struct skiplistdb *skiplistdb_new(DBType type)
+{
+        struct skiplistdb *db = NULL;
+
+        switch (type) {
+        case ZERO_SKIP:
+                db = zeroskip_new();
+                break;
+        case TWO_SKIP:
+                db = twoskip_new();
+                break;
+        default:
+                fprintf(stderr, "Unknown db type");
+                break;
+        }
+
+        return db;
+}
+
+static void skiplistdb_free(struct skiplistdb *db)
+{
+        if (!db)
+                return;
+
+        switch (db->type) {
+        case ZERO_SKIP:
+                zeroskip_free(db);
+                break;
+        case TWO_SKIP:
+                twoskip_free(db);
+                break;
+        default:
+                fprintf(stderr, "Unknown db type");
+                break;
+        }
+
+        return;
+}
+
+/*
+ * Exported functions
+ */
 int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags)
 {
         if (db->op->init)
@@ -35,18 +80,24 @@ int skiplistdb_final(struct skiplistdb *db)
                 return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_open(struct skiplistdb *db, const char *fname, int flags,
-                    struct txn **tid)
+int skiplistdb_open(const char *fname, int flags, DBType type,
+                    struct skiplistdb **db, struct txn **tid)
 {
-        if (db->op->open)
-                return db->op->open(db, fname, flags, tid);
+        struct skiplistdb *_db = NULL;
+
+        _db = skiplistdb_new(type);
+
+        *db = _db;
+
+        if (_db->op->open)
+                return _db->op->open(fname, flags, db, tid);
         else
                 return SDB_NOTIMPLEMENTED;
 }
 
 int skiplistdb_close(struct skiplistdb *db)
 {
-        if (db->op->close)
+        if (db && db->op->close)
                 return db->op->close(db);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -207,43 +258,4 @@ int skiplistdb_cmp(struct skiplistdb *db,
 int skiplistdb_backends(void)
 {
         return 0;
-}
-
-struct skiplistdb *skiplistdb_new(DBType type)
-{
-        struct skiplistdb *db = NULL;
-
-        switch (type) {
-        case ZERO_SKIP:
-                db = zeroskip_new();
-                break;
-        case TWO_SKIP:
-                db = twoskip_new();
-                break;
-        default:
-                fprintf(stderr, "Unknown db type");
-                break;
-        }
-
-        return db;
-}
-
-void skiplistdb_free(struct skiplistdb *db)
-{
-        if (!db)
-                return;
-
-        switch (db->type) {
-        case ZERO_SKIP:
-                zeroskip_free(db);
-                break;
-        case TWO_SKIP:
-                twoskip_free(db);
-                break;
-        default:
-                fprintf(stderr, "Unknown db type");
-                break;
-        }
-
-        return;
 }
