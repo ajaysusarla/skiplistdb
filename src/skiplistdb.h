@@ -36,6 +36,14 @@ enum {
         SDB_FULL           = -7,
 };
 
+/* DB File Flags */
+typedef enum {
+        SDB_CREATE       = 0x01, /* Create the DB if non-existent */
+        SDB_MBOXSORT     = 0x02, /* Use mailbox sort order ('.' sorts first) */
+        SDB_CONVERT      = 0x04, /* Convert to named format, if not already */
+        SDB_NOCOMPAT     = 0x08  /* Don't run DB compaction routines */
+} SBDFlags;
+
 struct txn;
 struct dbdata;
 struct skiplistdb;
