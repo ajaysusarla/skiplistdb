@@ -47,7 +47,7 @@ static void usage(void)
         size_t i;
 
         printf("Usage:\n");
-        printf("  %s {--help|--version}\n", progname); /* TODO: get progname */
+        printf("  %s {--help|--version}\n", progname);
 
         for (i = 0; i < ARRAY_SIZE(commands); i++) {
                 printf("  %s %s\n", progname, commands[i].usage);
@@ -104,18 +104,7 @@ int main(int argc, char **argv)
 
         if (argc >= 2 && argv[1][0] != '-')
                 return process_command(argc - 1, argv + 1);
-#if 0
-        struct skiplistdb *db;
-        struct txn *tid;
 
-        if (skiplistdb_open("foobar", 5, TWO_SKIP, &db, &tid) != SDB_OK) {
-                fprintf(stderr, "opening of db not successful!\n");
-        }
-
-        if (skiplistdb_close(db) != SDB_OK) {
-                fprintf(stderr, "closing of db not successful!\n");
-        }
-#endif
         return global_options(argc, argv);
 }
 
