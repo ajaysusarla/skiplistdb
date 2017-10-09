@@ -42,7 +42,7 @@ void xfree(void *ptr);
  * function parameters.  With correct compiler support, such usage
  * will cause a build error (see the build_assert_or_zero macro).
  */
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0])
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 #define bitsizeof(x)  (CHAR_BIT * sizeof(x))
 
