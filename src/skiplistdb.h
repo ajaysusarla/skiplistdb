@@ -41,6 +41,7 @@ enum {
         SDB_NOTFOUND       = -5,
         SDB_NOTIMPLEMENTED = -6,
         SDB_FULL           = -7,
+        SDB_ERROR          = -8,
 };
 
 /* DB File Flags */
@@ -159,5 +160,6 @@ int skiplistdb_cmp(struct skiplistdb *db,
 
 
 /* Utility functions for skiplistdb */
+int skiplistdb_backends(void);
 
 #endif  /* _SKIPLISTDB_H_ */

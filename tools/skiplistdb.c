@@ -47,7 +47,7 @@ static void usage(void)
         printf("  %s {--help|--version}\n", "skiplistdb"); /* TODO: get progname */
 
         for (i = 0; i < ARRAY_SIZE(commands); i++) {
-                printf("    %s %s\n", "skiplistdb", commands[i].usage);
+                printf("  %s %s\n", "skiplistdb", commands[i].usage);
         }
 }
 

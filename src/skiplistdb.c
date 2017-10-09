@@ -8,6 +8,7 @@
  */
 
 #include "skiplistdb.h"
+#include "util.h"
 
 extern struct skiplistdb * zeroskip_new(void);
 extern void zeroskip_free(struct skiplistdb *db);
@@ -15,8 +16,16 @@ extern struct skiplistdb * twoskip_new(void);
 extern void twoskip_free(struct skiplistdb *db);
 
 
-static struct skiplistdb db_backends[] = {
-        NULL,
+/*
+ * NOTE: How do we keep this updated?
+ */
+static struct {
+        const char *name;
+        const char *desc;
+        DBType type;
+} db_backends[] = {
+        { "zero skip", "A skiplist DB with a zero level linked list", ZERO_SKIP },
+        { "two skip",  "A skiplist DB with a two level linked list", TWO_SKIP }
 };
 
 /*
@@ -257,5 +266,11 @@ int skiplistdb_cmp(struct skiplistdb *db,
 
 int skiplistdb_backends(void)
 {
+        size_t i;
+
+        for (i = 0; i < ARRAY_SIZE(db_backends); i++) {
+                printf(" %s - %s\n", db_backends[i].name, db_backends[i].desc);
+        }
+
         return 0;
 }

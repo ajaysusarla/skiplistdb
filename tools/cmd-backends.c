@@ -8,7 +8,9 @@
 
 #include <getopt.h>
 
+#include "skiplistdb.h"
+
 int cmd_backends(int argc __attribute__((unused)), char **argv __attribute__((unused)))
 {
-    return 0;
+        return skiplistdb_backends();
 }
