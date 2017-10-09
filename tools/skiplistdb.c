@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <libgen.h>
 
 #include "skiplistdb.h"
 #include "version.h"
@@ -34,6 +35,8 @@ static struct {
 };
 #undef DBCMD
 
+static const char *progname = NULL;
+
 static void version(void)
 {
         fprintf(stderr, "Skiplist DB tool v" SDB_VERSION "\n");
@@ -44,10 +47,10 @@ static void usage(void)
         size_t i;
 
         printf("Usage:\n");
-        printf("  %s {--help|--version}\n", "skiplistdb"); /* TODO: get progname */
+        printf("  %s {--help|--version}\n", progname); /* TODO: get progname */
 
         for (i = 0; i < ARRAY_SIZE(commands); i++) {
-                printf("  %s %s\n", "skiplistdb", commands[i].usage);
+                printf("  %s %s\n", progname, commands[i].usage);
         }
 }
 
@@ -97,6 +100,7 @@ static int process_command(int argc, char **argv)
 
 int main(int argc, char **argv)
 {
+        progname = basename(argv[0]);
 
         if (argc >= 2 && argv[1][0] != '-')
                 return process_command(argc - 1, argv + 1);
