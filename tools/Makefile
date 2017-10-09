@@ -1,11 +1,22 @@
 # Tool for skiplistdb
 -include ../config.mk
 
-TOOL_OBJS =		\
-	skiplistdb.o 	\
+TOOL_OBJS =			\
+	cmd-backends.o 		\
+	cmd-batch.o		\
+	cmd-consistent.o	\
+	cmd-damage.o		\
+	cmd-delete.o		\
+	cmd-dump.o		\
+	cmd-get.o		\
+	cmd-repack.o		\
+	cmd-set.o		\
+	cmd-show.o		\
+	skiplistdb.o 		\
 	$(NULL)
 
 TOOL_HDRS = 	\
+	cmds.h 	\
 	$(NULL)
 
 DBTOOL=skiplistdb
