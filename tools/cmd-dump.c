@@ -17,9 +17,8 @@ int cmd_dump(int argc, char **argv, const char *progname)
 {
         static struct option long_options[] = {
                 {"config", required_argument, NULL, 'c'},
-                {"dump-recs", no_argument, NULL, 'r'},
-                {"dump-ptrs", no_argument, NULL, 'p'},
-                {"dump-all", no_argument, NULL, 'a'},
+                {"dump", required_argument, NULL, 'd'},
+                {"dbtype", required_argument, NULL, 't'},
                 {"help", no_argument, NULL, 'h'},
                 {NULL, 0, NULL, 0}
         };
@@ -28,16 +27,18 @@ int cmd_dump(int argc, char **argv, const char *progname)
         const char *config_file = NULL;
         struct skiplistdb *db;
         const char *fname;
+        DBDumpLevel level;
+        DBType type;
 
-        while((option = getopt_long(argc, argv, "ac:hpr", long_options, &optind)) != -1) {
+        while((option = getopt_long(argc, argv, "t", long_options, &optind)) != -1) {
                 switch (option) {
-                case 'a':
+                case 'd':       /* level of detail */
+                        level = parse_dump_level_string(optarg);
                         break;
-                case 'p':
+                case 't':       /* DB format */
+                        type = parse_dbtype_string(optarg);
                         break;
-                case 'r':
-                        break;
-                case 'c':
+                case 'c':       /* config file */
                         config_file = optarg;
                         break;
                 case 'h':
@@ -46,6 +47,14 @@ int cmd_dump(int argc, char **argv, const char *progname)
                         cmd_die_usage(progname, cmd_dump_usage);
                 };
         }
+
+        if (argc - optind != 1) {
+                cmd_die_usage(progname, cmd_dump_usage);
+        }
+
+        fname = argv[optind];
+
+        fprintf(stderr, "Opening db: %s\n", fname);
 
         cmd_parse_config(config_file);
 

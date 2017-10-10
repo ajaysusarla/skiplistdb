@@ -26,8 +26,9 @@ typedef enum {
 } DBState;
 
 typedef enum {
-        DB_SHORT,
-        DB_LONG,
+        DB_DUMP_RECS,
+        DB_DUMP_RECS_PTRS,
+        DB_DUMP_ALL,
 } DBDumpLevel;
 
 /* Return codes */

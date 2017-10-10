@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "skiplistdb.h"
+
 void cmd_die_usage(const char *progname, const char *usage)
 {
         fprintf(stderr, "Usage: %s %s\n", progname, usage);
@@ -19,4 +21,26 @@ void cmd_die_usage(const char *progname, const char *usage)
 int cmd_parse_config(const char *cfile __attribute__((unused)))
 {
         return 0;
+}
+
+DBDumpLevel parse_dump_level_string(const char *dblevel)
+{
+        if (!dblevel || strcmp(dblevel, "recs") == 0)
+                return DB_DUMP_RECS;
+        else if (strcmp(dblevel, "ptrs") == 0)
+                return DB_DUMP_RECS_PTRS;
+        else if (strcmp(dblevel, "all") == 0)
+                return DB_DUMP_ALL;
+        else
+                cmd_die_usage("...", "--dump=recs|ptrs|all");
+}
+
+DBType parse_dbtype_string(const char *dbtype)
+{
+        if (strcmp(dbtype,  "zeroskip") == 0)
+                return ZERO_SKIP;
+        else if (strcmp(dbtype, "twoskip") == 0)
+                return TWO_SKIP;
+        else
+                cmd_die_usage("..", "--dbtype=zeroskip|twoskip");
 }

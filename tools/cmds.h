@@ -9,6 +9,8 @@
 #ifndef _CMDS_H_
 #define _CMDS_H_
 
+#include "skiplistdb.h"
+
 int cmd_backends(int argc, char **argv, const char *progname);
 #define cmd_backends_usage "backends "
 
@@ -25,7 +27,7 @@ int cmd_delete(int argc, char **argv, const char *progname);
 #define cmd_delete_usage "delete "
 
 int cmd_dump(int argc, char **argv, const char *progname);
-#define cmd_dump_usage "dump "
+#define cmd_dump_usage "dump [--config, -c] [--dump=recs|ptrs|all] [--dbtype=zeroskip|twoskip] DBFILE"
 
 int cmd_consistent(int argc, char **argv, const char *progname);
 #define cmd_consistent_usage "consistent "
@@ -42,4 +44,7 @@ int cmd_batch(int argc, char **argv, const char *progname);
 void cmd_die_usage(const char *progname, const char *usage);
 
 int cmd_parse_config(const char *cfile);
+
+DBDumpLevel parse_dump_level_string(const char *dblevel);
+DBType parse_dbtype_string(const char *dbtype);
 #endif  /* _CMDS_H_ */
