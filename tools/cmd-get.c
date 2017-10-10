@@ -7,8 +7,35 @@
  */
 
 #include <getopt.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-int cmd_get(int argc __attribute__((unused)), char **argv __attribute__((unused)))
+#include "cmds.h"
+
+int cmd_get(int argc, char **argv, const char *progname)
 {
-    return 0;
+        static struct option long_options[] = {
+                {"config", required_argument, NULL, 'c'},
+                {"help", no_argument, NULL, 'h'},
+                {NULL, 0, NULL, 0}
+        };
+        int option;
+        int optind;
+        const char *config_file = NULL;
+
+        while((option = getopt_long(argc, argv, "c:h", long_options, &optind)) != -1) {
+                switch (option) {
+                case 'c':
+                        config_file = optarg;
+                        break;
+                case 'h':
+                case '?':
+                default:
+                        cmd_die_usage(progname, cmd_get_usage);
+                };
+        }
+
+        cmd_parse_config(config_file);
+
+        exit(EXIT_SUCCESS);
 }

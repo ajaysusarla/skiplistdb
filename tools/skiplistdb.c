@@ -20,7 +20,7 @@
 static struct {
         const char *name;
         const char *usage;
-        int (*cmd)(int, char **);
+        int (*cmd)(int, char **, const char *);
 } commands[] = {
         DBCMD(backends),
         DBCMD(show),
@@ -59,7 +59,7 @@ static int global_options(int argc, char **argv)
         static struct option long_options[] = {
                 {"version", no_argument, NULL, 'v'},
                 {"help", no_argument, NULL, 'h'},
-                {0, 0, 0, 0}
+                {NULL, 0, NULL, 0}
         };
         int option;
         int optind;
@@ -90,7 +90,7 @@ static int process_command(int argc, char **argv)
 
         for (i = 0; i < ARRAY_SIZE(commands); i++) {
                 if (argc && !strcmp(argv[0], commands[i].name))
-                        return commands[i].cmd(argc, argv);
+                        return commands[i].cmd(argc, argv, progname);
         }
 
         usage();

@@ -2,6 +2,7 @@
 -include ../config.mk
 
 TOOL_OBJS =			\
+	cmd.o			\
 	cmd-backends.o 		\
 	cmd-batch.o		\
 	cmd-consistent.o	\

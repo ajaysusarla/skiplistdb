@@ -10,7 +10,7 @@
 
 #include "skiplistdb.h"
 
-int cmd_backends(int argc __attribute__((unused)), char **argv __attribute__((unused)))
+int cmd_backends(int argc __attribute__((unused)), char **argv __attribute__((unused)), const char *progname __attribute__((unused)))
 {
         return skiplistdb_backends();
 }
