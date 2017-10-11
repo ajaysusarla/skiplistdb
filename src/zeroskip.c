@@ -24,6 +24,9 @@
 #define ZS_HDR_SIGNATURE 0x5a45524f534b4950 /* "ZEROSKIP" */
 #define ZS_HDR_VERSION   1
 
+/**
+ * The zeroskip header.
+ */
 /* Header offsets */
 enum {
         ZS_HEADER      = 0,
@@ -43,6 +46,9 @@ struct zs_header {
         uint32_t crc32;             /* CRC32 of rest of header */
 };
 
+/**
+ * The zeroskip record. Either a key or a value.
+ */
 enum record_t {
         REC_TYPE_KEY                 = 0x01,
         REC_TYPE_VALUE               = 0x02,
@@ -59,16 +65,16 @@ struct zs_key {
         uint64_t ptr_to_val : 40;
         uint64_t ext_length;
         uint64_t ext_ptr_to_val;
-        uint32_t *data;
-        uint32_t padding : 24;
+        uint8_t  *data;
+        uint8_t  padding[7];
 };
 
 struct zs_val {
         uint32_t length : 24;
         uint32_t null_pad;
         uint64_t ext_length;
-        uint32_t *data;
-        uint32_t padding : 8;
+        uint8_t  *data;
+        uint32_t padding[7];
 };
 
 struct zs_rec {
@@ -77,6 +83,39 @@ struct zs_rec {
                 struct zs_key key;
                 struct zs_val val;
         } rec;
+};
+
+/**
+ * Commit
+ */
+enum commit_t {
+        COMMIT_SHORT,
+        COMMIT_LONG,
+};
+
+struct zs_short_commit {
+        uint8_t  type;
+        uint32_t length : 24;
+        uint32_t crc32;
+};
+
+struct zs_long_commit {
+        uint8_t  type1;
+        uint8_t  padding1[7];
+        uint64_t length;
+        uint8_t  type2;
+        uint8_t  padding2[3];
+        uint32_t crc32;
+};
+
+/**
+ * Pointers
+ */
+struct zs_pointer {
+        uint64_t      num_ptrs;
+        uint64_t      num_shadowed_recs;
+        uint64_t      num_shadowed_bytes;
+        struct zs_rec *key_ptry;
 };
 
 /**
