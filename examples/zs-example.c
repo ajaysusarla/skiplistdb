@@ -12,7 +12,23 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "skiplistdb.h"
+
+#define DBFNAME "dbzs"
+
 int main(int argc __attribute__((unused)), char **argv __attribute__((unused)))
 {
-        exit(EXIT_SUCCESS);
+        struct skiplistdb *db = NULL;
+        struct txn *tid;
+        int ret = EXIT_SUCCESS;
+
+        if (skiplistdb_open(DBFNAME, SDB_CREATE, ZERO_SKIP, &db, &tid) != SDB_OK) {
+                fprintf(stderr, "Cannot create db: %s\n", DBFNAME);
+                ret = EXIT_FAILURE;
+                goto quit;
+        }
+
+        skiplistdb_close(db);
+quit:
+        exit(ret);
 }
