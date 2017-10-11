@@ -30,7 +30,7 @@ where:
 
     [Key] => [
         [Type]                    | Type   | 8 bits
-        length(Key)               | uint24 | 16 bits
+        length(Key)               | uint16 | 16 bits
         PointerToValue            | uint40 | 40 bits (null => Deletion)
         (Extended length(Key))?   | uint64 | 64 bits
         (Extended PointerToValue)?| uint64 | 64 bits
@@ -40,7 +40,7 @@ where:
 
     [Value] => [
         [Type]                    | Type   | 8 bits
-        length(Value)             | uint16 | 24 bits
+        length(Value)             | uint24 | 24 bits
         (Extended null pad)?      | byte[] | 32 bits
         (Extended length(Value))? | uint64 | 64 bits
         Value                     | byte[] | *
