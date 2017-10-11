@@ -23,15 +23,16 @@ static struct {
         int (*cmd)(int, char **, const char *);
 } commands[] = {
         DBCMD(backends),
-        DBCMD(show),
-        DBCMD(get),
-        DBCMD(set),
+        DBCMD(batch),
+        DBCMD(consistent),
+        DBCMD(damage),
         DBCMD(delete),
         DBCMD(dump),
-        DBCMD(consistent),
+        DBCMD(get),
+        DBCMD(new),
         DBCMD(repack),
-        DBCMD(damage),
-        DBCMD(batch),
+        DBCMD(show),
+        DBCMD(set),
 };
 #undef DBCMD
 

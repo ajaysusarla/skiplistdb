@@ -41,6 +41,9 @@ int cmd_damage(int argc, char **argv, const char *progname);
 int cmd_batch(int argc, char **argv, const char *progname);
 #define cmd_batch_usage "batch "
 
+int cmd_new(int argc, char **argv, const char *progname);
+#define cmd_new_usage "new "
+
 void cmd_die_usage(const char *progname, const char *usage);
 
 int cmd_parse_config(const char *cfile);

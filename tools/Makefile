@@ -11,6 +11,7 @@ TOOL_OBJS =			\
 	cmd-dump.o		\
 	cmd-get.o		\
 	cmd-repack.o		\
+	cmd-new.o		\
 	cmd-set.o		\
 	cmd-show.o		\
 	skiplistdb.o 		\
