@@ -176,9 +176,9 @@ int mappedfile_read(struct mappedfile **mfp, char *obuf, size_t obufsize,
  * mapfile_write():
  *
  *        mfp    - a pointer to a struct mappedfile object
- *        obuf   - buffer to read into
- *        osize  - bize of the buffer being read into
- *        nbytes - total number of bytes read
+ *        ibuf   - buffer to write from
+ *        ibufsize  - size of the buffer written
+ *        nbytes - total number of bytes written
  *
  * Return:
  *   Success : 0
@@ -225,6 +225,67 @@ int mappedfile_write(struct mappedfile **mfp, char *ibuf, size_t ibufsize,
 
         if (nbytes)
                 *nbytes = ibufsize;
+
+        return 0;
+}
+
+/*
+ * mappedfile_write_iov():
+ *
+ * Return:
+ *   Success : 0
+ *   Failre  : non zero
+ */
+int mappedfile_write_iov(struct mappedfile **mfp, const struct iovec *iov,
+                         unsigned int iov_cnt, size_t *nbytes)
+{
+        struct mappedfile *mf = *mfp;
+        unsigned int i;
+        size_t total_bytes = 0;
+
+        if (mf == &mf_init || mf->ptr == MAP_FAILED)
+                return EINVAL;
+
+        if (!(mf->flags & MAPPEDFILE_WR) || !(mf->flags & MAPPEDFILE_RW))
+                return EACCES;
+
+        for (i = 0; i < iov_cnt; i++) {
+                total_bytes += iov[i].iov_len;
+        }
+
+        if (mf->size < (mf->offset + total_bytes)) {
+                /* If the input buffer's size is bigger, we overwrite. */
+                if (mf->ptr && munmap(mf->ptr, mf->size) != 0) {
+                        int err = errno;
+                        mf->ptr = MAP_FAILED;
+                        close(mf->fd);
+                        return err;
+                }
+
+                if (ftruncate(mf->fd, mf->offset + total_bytes) != 0)
+                        return 0;
+
+                mf->ptr = mmap(0, mf->offset + total_bytes, mf->flags,
+                               MAP_SHARED, mf->fd, 0);
+                if (mf->ptr == MAP_FAILED) {
+                        int err = errno;
+                        close(mf->fd);
+                        return err;
+                }
+
+                mf->size = mf->offset + total_bytes;
+        }
+
+        if (total_bytes) {
+                for (i = 0; i < iov_cnt; i++) {
+                        memcpy(mf->ptr + mf->offset, iov[i].iov_base,
+                               iov[i].iov_len);
+                        mf->offset += iov[i].iov_len;
+                }
+        }
+
+        if (nbytes)
+                *nbytes = total_bytes;
 
         return 0;
 }

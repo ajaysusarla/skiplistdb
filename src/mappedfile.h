@@ -14,6 +14,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <sys/uio.h>
 
 #include "macros.h"
 
@@ -42,6 +43,8 @@ int mappedfile_read(struct mappedfile **mfp, char *obuf, size_t obufsize,
                     size_t *nbytes);
 int mappedfile_write(struct mappedfile **mfp, char *ibuf, size_t ibufsize,
                      size_t *nbytes);
+int mappedfile_write_iov(struct mappedfile **mfp, const struct iovec *iov,
+                         unsigned int iov_cnt, size_t *nbytes);
 int mappedfile_size(struct mappedfile **mfp, size_t *psize);
 int mappedfile_truncate(struct mappedfile **mfp, size_t len);
 int mappedfile_flush(struct mappedfile **mfp);
