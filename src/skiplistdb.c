@@ -25,7 +25,7 @@ static struct {
         DBType type;
 } db_backends[] = {
         { "zero skip", "A skiplist DB with a zero level linked list", ZERO_SKIP },
-        { "two skip",  "A skiplist DB with a two level linked list", TWO_SKIP }
+        { "two  skip",  "A skiplist DB with a two level linked list", TWO_SKIP }
 };
 
 /*
@@ -75,7 +75,7 @@ static void skiplistdb_free(struct skiplistdb *db)
  */
 int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags)
 {
-        if (db->op->init)
+        if (db && db->op && db->op->init)
                 return db->op->init(db, dbdir, flags);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -83,7 +83,7 @@ int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags)
 
 int skiplistdb_final(struct skiplistdb *db)
 {
-        if (db->op->final)
+        if (db && db->op && db->op->final)
                 return db->op->final(db);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -94,11 +94,13 @@ int skiplistdb_open(const char *fname, int flags, DBType type,
 {
         struct skiplistdb *_db = NULL;
 
-        _db = skiplistdb_new(type);
+        if (!*db) {
+                _db = skiplistdb_new(type);
+                _db->allocated = 1;
+                *db = _db;
+        }
 
-        *db = _db;
-
-        if (_db->op->open)
+        if (_db->op && _db->op->open)
                 return _db->op->open(fname, flags, db, tid);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -106,7 +108,7 @@ int skiplistdb_open(const char *fname, int flags, DBType type,
 
 int skiplistdb_close(struct skiplistdb *db)
 {
-        if (db && db->op->close)
+        if (db && db->op && db->op->close)
                 return db->op->close(db);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -114,7 +116,7 @@ int skiplistdb_close(struct skiplistdb *db)
 
 int skiplistdb_sync(struct skiplistdb *db)
 {
-        if (db->op->sync)
+        if (db && db->op && db->op->sync)
                 return db->op->sync(db);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -123,7 +125,7 @@ int skiplistdb_sync(struct skiplistdb *db)
 int skiplistdb_archive(struct skiplistdb *db, const struct str_array *fnames,
                        const char *dirname)
 {
-        if (db->op->archive)
+        if (db && db->op && db->op->archive)
                 return db->op->archive(db, fnames, dirname);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -131,7 +133,7 @@ int skiplistdb_archive(struct skiplistdb *db, const struct str_array *fnames,
 
 int skiplistdb_unlink(struct skiplistdb *db, const char *fname, int flags)
 {
-        if (db->op->unlink)
+        if (db && db->op && db->op->unlink)
                 return db->op->unlink(db, fname, flags);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -142,7 +144,7 @@ int skiplistdb_fetch(struct skiplistdb *db,
                      const char **data, size_t *datalen,
                      struct txn **tid)
 {
-        if (db->op->fetch)
+        if (db && db->op && db->op->fetch)
                 return db->op->fetch(db, key, keylen, data, datalen, tid);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -153,7 +155,7 @@ int skilistdb_fetchlock(struct skiplistdb *db,
                         const char **data, size_t *datalen,
                         struct txn **tid)
 {
-        if (db->op->fetchlock)
+        if (db && db->op && db->op->fetchlock)
                 return db->op->fetchlock(db, key, keylen, data, datalen, tid);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -165,7 +167,7 @@ int skiplistdb_fetchnext(struct skiplistdb *db,
                          const char **data, size_t *datalen,
                          struct txn **tid)
 {
-        if (db->op->fetchnext)
+        if (db && db->op && db->op->fetchnext)
                 return db->op->fetchnext(db, key, keylen, foundkey,
                                          foundkeylen, data, datalen, tid);
         else
@@ -177,7 +179,7 @@ int skiplistdb_foreach(struct skiplistdb *db,
                        foreach_p *p, foreach_cb *cb, void *rock,
                        struct txn **tid)
 {
-        if (db->op->foreach)
+        if (db && db->op && db->op->foreach)
                 return db->op->foreach(db, prefix, prefixlen, p, cb, rock, tid);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -188,7 +190,7 @@ int skiplistdb_add(struct skiplistdb *db,
                    const char *data, size_t datalen,
                    struct txn **tid)
 {
-        if (db->op->add)
+        if (db && db->op && db->op->add)
                 return db->op->add(db, key, keylen, data, datalen, tid);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -198,7 +200,7 @@ int skiplistdb_remove(struct skiplistdb *db,
                       const char *key, size_t keylen,
                       struct txn **tid, int force)
 {
-        if (db->op->remove)
+        if (db && db->op && db->op->remove)
                 return db->op->remove(db, key, keylen, tid, force);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -209,7 +211,7 @@ int skiplistdb_store(struct skiplistdb *db,
                      const char *data, size_t datalen,
                      struct txn **tid)
 {
-        if (db->op->store)
+        if (db && db->op && db->op->store)
                 return db->op->store(db, key, keylen, data, datalen, tid);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -217,7 +219,7 @@ int skiplistdb_store(struct skiplistdb *db,
 
 int skiplistdb_commit(struct skiplistdb *db, struct txn **tid)
 {
-        if (db->op->commit)
+        if (db && db->op && db->op->commit)
                 return db->op->commit(db, tid);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -225,7 +227,7 @@ int skiplistdb_commit(struct skiplistdb *db, struct txn **tid)
 
 int skiplistdb_abort(struct skiplistdb *db, struct txn **tid)
 {
-        if (db->op->abort)
+        if (db && db->op && db->op->abort)
                 return db->op->abort(db, tid);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -233,7 +235,7 @@ int skiplistdb_abort(struct skiplistdb *db, struct txn **tid)
 
 int skiplistdb_dump(struct skiplistdb *db, DBDumpLevel level)
 {
-        if (db->op->dump)
+        if (db && db->op && db->op->dump)
                 return db->op->dump(db, level);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -241,7 +243,7 @@ int skiplistdb_dump(struct skiplistdb *db, DBDumpLevel level)
 
 int skiplistdb_consistent(struct skiplistdb *db)
 {
-        if (db->op->consistent)
+        if (db && db->op && db->op->consistent)
                 return db->op->consistent(db);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -249,7 +251,7 @@ int skiplistdb_consistent(struct skiplistdb *db)
 
 int skiplistdb_repack(struct skiplistdb *db)
 {
-        if (db->op->repack)
+        if (db && db->op && db->op->repack)
                 return db->op->repack(db);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -258,7 +260,7 @@ int skiplistdb_repack(struct skiplistdb *db)
 int skiplistdb_cmp(struct skiplistdb *db,
                    const char *s1, int l1, const char *s2, int l2)
 {
-        if (db->op->cmp)
+        if (db && db->op && db->op->cmp)
                 return db->op->cmp(db, s1, l1, s2, l2);
         else
                 return SDB_NOTIMPLEMENTED;
@@ -274,3 +276,26 @@ int skiplistdb_backends(void)
 
         return 0;
 }
+
+const struct skiplistdb_operations base_ops = {
+        .init         = NULL,
+        .final        = NULL,
+        .open         = NULL,
+        .close        = NULL,
+        .sync         = NULL,
+        .archive      = NULL,
+        .unlink       = NULL,
+        .fetch        = NULL,
+        .fetchlock    = NULL,
+        .fetchnext    = NULL,
+        .foreach      = NULL,
+        .add          = NULL,
+        .remove       = NULL,
+        .store        = NULL,
+        .commit       = NULL,
+        .abort        = NULL,
+        .dump         = NULL,
+        .consistent   = NULL,
+        .repack       = NULL,
+        .cmp          = NULL,
+};

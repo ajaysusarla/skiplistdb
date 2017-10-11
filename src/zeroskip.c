@@ -9,8 +9,75 @@
 
 #include "zeroskip.h"
 #include "util.h"
+#include "mappedfile.h"
 
 #include <stdio.h>
+#include <assert.h>
+
+
+/*
+ *  Zero skip on-disk file format:
+ *
+ *  [Header]([Key|Value]+[Commit])+[Pointers][Commit]
+ */
+
+#define ZS_HDR_SIGNATURE 0x5a45524f534b4950 /* "ZEROSKIP" */
+#define ZS_HDR_VERSION   1
+
+/* Header offsets */
+enum {
+        ZS_HEADER      = 0,
+        ZS_VERSION     = 8,
+        ZS_UUID        = 12,
+        ZS_START_IDX   = 28,
+        ZS_END_IDX     = 32,
+        ZS_CRC32       = 36,
+};
+
+struct zs_header {
+        uint64_t signature;         /* Signature */
+        uint32_t version;           /* Version Number */
+        char     uuid[16];          /* UUID of DB */
+        uint32_t startidx;          /* Start Index of DB range */
+        uint32_t endidx;            /* End Index of DB range */
+        uint32_t crc32;             /* CRC32 of rest of header */
+};
+
+enum record_t {
+        REC_TYPE_KEY                 = 0x01,
+        REC_TYPE_VALUE               = 0x02,
+        REC_TYPE_COMMIT              = 0x04,
+        REC_TYPE_2ND_HALF_COMMIT     = 0x08,
+        REC_TYPE_FINAL               = 0x10,
+        REC_TYPE_HAS_LONG_VALUES     = 0x20,
+        REC_TYPE_UNUSED1             = 0x40,
+        REC_TYPE_UNUSED2             = 0x80,
+};
+
+struct zs_key {
+        uint16_t length;
+        uint64_t ptr_to_val : 40;
+        uint64_t ext_length;
+        uint64_t ext_ptr_to_val;
+        uint32_t *data;
+        uint32_t padding : 24;
+};
+
+struct zs_val {
+        uint32_t length : 24;
+        uint32_t null_pad;
+        uint64_t ext_length;
+        uint32_t *data;
+        uint32_t padding : 8;
+};
+
+struct zs_rec {
+        uint8_t type;
+        union {
+                struct zs_key key;
+                struct zs_val val;
+        } rec;
+};
 
 /**
  * Trasaction structure
@@ -23,7 +90,11 @@ struct txn {
  * zeroskip private data
  */
 struct zsdb_priv {
-    struct mappefile *mf;
+        struct mappedfile *mf;
+        struct zs_header header;
+
+        unsigned int is_open:1;
+        size_t end;
 };
 
 static int zs_init(struct skiplistdb *db, const char *dbdir, int flags)
@@ -39,7 +110,29 @@ static int zs_final(struct skiplistdb *db)
 static int zs_open(const char *fname, int flags,
                    struct skiplistdb **db, struct txn **tid)
 {
-        return SDB_NOTIMPLEMENTED;
+        int mappedfile_flags = MAPPEDFILE_RW;
+        struct skiplistdb *tdb;
+        struct zsdb_priv *priv;
+        int ret = SDB_OK;
+
+        assert(fname);
+        assert(db);
+        assert((*db)->priv);
+
+        priv = (struct zsdb_priv *)(*db)->priv;
+
+        if (flags & SDB_CREATE) {
+                mappedfile_flags |= MAPPEDFILE_CREATE;
+        }
+
+        ret = mappedfile_open(fname, mappedfile_flags, &priv->mf);
+        if (ret) {
+                ret = SDB_IOERROR;
+                goto done;
+        }
+
+done:
+        return ret;
 }
 
 static int zs_close(struct skiplistdb *db)

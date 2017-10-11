@@ -30,6 +30,17 @@ void *xrealloc(void *ptr, size_t size);
 void *xcalloc(size_t nmemb, size_t size);
 char *xstrdup(const char *s);
 void xfree(void *ptr);
+inline size_t off_to_size_t(off_t len)
+{
+        size_t size = (size_t) len;
+
+        if (len != (off_t) size) {
+                /* overflow, file size too big - need to abort */
+                abort();
+        }
+
+        return size;
+}
 
 
 #define ENSURE_NON_NULL(p) p?p:""

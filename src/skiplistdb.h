@@ -16,6 +16,7 @@
 typedef enum {
         ZERO_SKIP,
         TWO_SKIP,
+        INVALID_DB,
 } DBType;
 
 typedef enum {
@@ -108,8 +109,11 @@ struct skiplistdb {
         const char *name;
         DBType type;
         const struct skiplistdb_operations *op;
+        unsigned int allocated:1;
         void *priv;
 };
+const struct skiplistdb_operations base_ops;
+#define SKIPLISTDB_INIT {NULL, INVALID_DB, &base_ops, 0, NULL }
 
 int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags);
 int skiplistdb_final(struct skiplistdb *db);
