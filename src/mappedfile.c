@@ -68,8 +68,6 @@ int mappedfile_open(const char *fname, uint32_t flags, struct mappedfile **mfp)
         } else if (flags & MAPPEDFILE_WR) {
                 mflags = PROT_WRITE;
                 oflags = O_WRONLY;
-        } else if (flags & MAPPEDFILE_CREATE) {
-            return ENOSYS;
         } else if (flags & MAPPEDFILE_RD) {
                 mflags = PROT_READ;
                 oflags = O_RDONLY;
@@ -78,16 +76,19 @@ int mappedfile_open(const char *fname, uint32_t flags, struct mappedfile **mfp)
                 oflags = O_RDONLY;
         }
 
+        if (flags & MAPPEDFILE_CREATE)
+                oflags |= O_CREAT;
+
         mf->fd = open(fname, oflags);
         if (mf->fd < 0) {
-                perror("mappedfile_open");
+                perror("mappedfile_open:open");
                 return errno;
         }
 
         if (fstat(mf->fd, &st) != 0) {
                 int err = errno;
                 close(mf->fd);
-                perror("mappedfile_open");
+                perror("mappedfile_open:fstat");
                 return err;
         }
         mf->size = st.st_size;
