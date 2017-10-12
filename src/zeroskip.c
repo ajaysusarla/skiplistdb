@@ -56,56 +56,60 @@ enum record_t {
         REC_TYPE_2ND_HALF_COMMIT     = 0x08,
         REC_TYPE_FINAL               = 0x10,
         REC_TYPE_HAS_LONG_VALUES     = 0x20,
-        REC_TYPE_UNUSED1             = 0x40,
-        REC_TYPE_UNUSED2             = 0x80,
+        REC_TYPE_DELETED             = 0x40,
+        REC_TYPE_UNUSED              = 0x80,
 };
 
-struct zs_key {
+struct zs_short_key {
         uint16_t length;
         uint64_t ptr_to_val : 40;
-        uint64_t ext_length;
-        uint64_t ext_ptr_to_val;
         uint8_t  *data;
         uint8_t  padding[7];
-};
 
-struct zs_val {
-        uint32_t length : 24;
-        uint32_t null_pad;
-        uint64_t ext_length;
+};
+struct zs_long_key {
+        uint8_t  padding1[7];
+        uint64_t length;
+        uint64_t ptr_to_val;
         uint8_t  *data;
-        uint32_t padding[7];
+        uint8_t  padding2[7];
 };
 
-struct zs_rec {
-        uint8_t type;
-        union {
-                struct zs_key key;
-                struct zs_val val;
-        } rec;
+struct zs_short_val {
+        uint32_t length : 24;
+        uint8_t  *data;
+        uint8_t  padding[3];
 };
 
-/**
- * Commit
- */
-enum commit_t {
-        COMMIT_SHORT,
-        COMMIT_LONG,
+struct zs_long_val {
+        uint8_t  padding1[3];
+        uint64_t length;
+        uint8_t  *data;
+        uint8_t  padding2[3];
 };
 
 struct zs_short_commit {
-        uint8_t  type;
         uint32_t length : 24;
         uint32_t crc32;
 };
 
 struct zs_long_commit {
-        uint8_t  type1;
         uint8_t  padding1[7];
         uint64_t length;
-        uint8_t  type2;
+        uint8_t  type;
         uint8_t  padding2[3];
         uint32_t crc32;
+};
+struct zs_rec {
+        uint8_t type;
+        union {
+                struct zs_short_key    skey;
+                struct zs_long_key     lkey;
+                struct zs_short_val    sval;
+                struct zs_long_val     lval;
+                struct zs_short_commit scommit;
+                struct zs_long_commit  lcommit;
+        } rec;
 };
 
 /**
@@ -136,6 +140,10 @@ struct zsdb_priv {
         size_t end;
 };
 
+static int zs_write_record(struct zsdb_priv *priv, struct zs_rec *record,
+                           const char *key, const char *val)
+{}
+
 static int zs_init(struct skiplistdb *db, const char *dbdir, int flags)
 {
         return SDB_NOTIMPLEMENTED;
@@ -153,6 +161,7 @@ static int zs_open(const char *fname, int flags,
         struct skiplistdb *tdb;
         struct zsdb_priv *priv;
         int ret = SDB_OK;
+        size_t mf_size;
 
         assert(fname);
         assert(db);
@@ -160,14 +169,17 @@ static int zs_open(const char *fname, int flags,
 
         priv = (struct zsdb_priv *)(*db)->priv;
 
-        if (flags & SDB_CREATE) {
+        if (flags & SDB_CREATE)
                 mappedfile_flags |= MAPPEDFILE_CREATE;
-        }
 
         ret = mappedfile_open(fname, mappedfile_flags, &priv->mf);
         if (ret) {
                 ret = SDB_IOERROR;
                 goto done;
+        }
+
+        mappedfile_size(&priv->mf, &mf_size);
+        if (mf_size == 0) {
         }
 
 done:

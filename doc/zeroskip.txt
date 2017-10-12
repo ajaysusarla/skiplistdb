@@ -21,11 +21,11 @@ where:
         isKey            | 1 bit
         isValue          | 1 bit
         isCommit         | 1 bit
-        is2ndHalfCommit  | 1 bit (set in the second [Type] in a
-        [LongCommit])
+        is2ndHalfCommit  | 1 bit (set in the second [Type] in a [LongCommit])
         isFinal          | 1 bit (set in the commit after [Pointers])
         hasLongValues    | 1 bit (long commit/long keys)
-        (Unused)         | 2 bits
+        isDeleted        | 1 bit
+        (Unused)         | 1 bits
     ] (1 byte total)
 
     [Key] => [
