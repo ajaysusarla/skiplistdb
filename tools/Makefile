@@ -21,6 +21,8 @@ TOOL_HDRS = 	\
 	cmds.h 	\
 	$(NULL)
 
+LIBS=-luuid
+
 DBTOOL=skiplistdb
 
 SKIPLISTDB_INC=../src
@@ -36,7 +38,7 @@ Makefile.dep:
 	$(SDB_CC) -I$(SKIPLISTDB_INC) -c $<
 
 $(DBTOOL): $(TOOL_OBJS)
-	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE)
+	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE) $(LIBS)
 
 clean:
 	$(SDB_RM) $(TOOL_OBJS) $(DBTOOL) *.o Makefile.dep

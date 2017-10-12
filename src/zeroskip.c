@@ -11,8 +11,11 @@
 #include "util.h"
 #include "mappedfile.h"
 
-#include <stdio.h>
+#include <arpa/inet.h>
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include <uuid/uuid.h>
 
 
 /*
@@ -40,21 +43,25 @@ enum {
 struct zs_header {
         uint64_t signature;         /* Signature */
         uint32_t version;           /* Version Number */
-        char     uuid[16];          /* UUID of DB */
+        uuid_t   uuid;              /* UUID of DB */
         uint32_t startidx;          /* Start Index of DB range */
         uint32_t endidx;            /* End Index of DB range */
         uint32_t crc32;             /* CRC32 of rest of header */
 };
 
 /**
- * The zeroskip record. Either a key or a value.
+ * The zeroskip record[key|value|commit]
  */
 enum record_t {
-        REC_TYPE_KEY                 = 0x01,
-        REC_TYPE_VALUE               = 0x02,
-        REC_TYPE_COMMIT              = 0x04,
+        REC_TYPE_SHORT_KEY           = 0x01,
+        REC_TYPE_LONG_KEY            = 0x21,
+        REC_TYPE_SHORT_VALUE         = 0x02,
+        REC_TYPE_LONG_VALUE          = 0x22,
+        REC_TYPE_SHORT_COMMIT        = 0x04,
+        REC_TYPE_LONG_COMMIT         = 0x24,
         REC_TYPE_2ND_HALF_COMMIT     = 0x08,
-        REC_TYPE_FINAL               = 0x10,
+        REC_TYPE_SHORT_FINAL         = 0x10,
+        REC_TYPE_LONG_FINAL          = 0x30,
         REC_TYPE_HAS_LONG_VALUES     = 0x20,
         REC_TYPE_DELETED             = 0x40,
         REC_TYPE_UNUSED              = 0x80,
@@ -140,9 +147,68 @@ struct zsdb_priv {
         size_t end;
 };
 
+static int zs_write_header(struct zsdb_priv *priv)
+{
+        int ret = SDB_OK;
+        struct zs_header hdr;
+
+        hdr.signature = priv->header.signature;
+        hdr.version = htonl(priv->header.version);
+        memcpy(hdr.uuid, priv->header.uuid, sizeof(uuid_t));
+        hdr.startidx = htonl(priv->header.startidx);
+        hdr.endidx = htonl(priv->header.endidx);
+        hdr.crc32 = htonl(priv->header.crc32);
+
+        return ret;
+}
+
+static int zs_commit_header(struct zsdb_priv *priv)
+{
+        int ret;
+
+        ret = zs_write_header(priv);
+        mappedfile_flush(&priv->mf);
+}
+
 static int zs_write_record(struct zsdb_priv *priv, struct zs_rec *record,
                            const char *key, const char *val)
-{}
+{
+        int ret = SDB_OK;
+
+        assert(priv);
+        assert(record);
+
+        switch(record->type) {
+        case REC_TYPE_SHORT_KEY:
+                break;
+        case REC_TYPE_LONG_KEY:
+                break;
+        case REC_TYPE_SHORT_VALUE:
+                break;
+        case REC_TYPE_LONG_VALUE:
+                break;
+        case REC_TYPE_SHORT_COMMIT:
+                break;
+        case REC_TYPE_LONG_COMMIT:
+                break;
+        case REC_TYPE_2ND_HALF_COMMIT:
+                break;
+        case REC_TYPE_SHORT_FINAL:
+                break;
+        case REC_TYPE_LONG_FINAL:
+                break;
+        case REC_TYPE_DELETED:
+                break;
+        case REC_TYPE_UNUSED:
+                break;
+        default:
+                ret = SDB_ERROR;
+                goto done;
+        }
+
+done:
+        return ret;
+}
 
 static int zs_init(struct skiplistdb *db, const char *dbdir, int flags)
 {
