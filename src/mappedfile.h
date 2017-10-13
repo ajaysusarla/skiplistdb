@@ -30,10 +30,12 @@ struct mappedfile {
 };
 
 enum {
-        MAPPEDFILE_CREATE = (1 << 0),
-        MAPPEDFILE_RD     = (1 << 1),
-        MAPPEDFILE_WR     = (1 << 2),
-        MAPPEDFILE_RW     = (1 << 3),
+        MAPPEDFILE_RD     = 0x00000001,
+        MAPPEDFILE_WR     = 0x00000002,
+        MAPPEDFILE_RW     = (MAPPEDFILE_RD | MAPPEDFILE_WR),
+        MAPPEDFILE_CREATE = 0x00000010,
+        MAPPEDFILE_WR_CR  = (MAPPEDFILE_WR | MAPPEDFILE_CREATE),
+        MAPPEDFILE_RW_CR  = (MAPPEDFILE_RW | MAPPEDFILE_CREATE),
 };
 
 int mappedfile_open(const char *fname, uint32_t flags,
@@ -41,7 +43,7 @@ int mappedfile_open(const char *fname, uint32_t flags,
 int mappedfile_close(struct mappedfile **mfp);
 int mappedfile_read(struct mappedfile **mfp, char *obuf, size_t obufsize,
                     size_t *nbytes);
-int mappedfile_write(struct mappedfile **mfp, char *ibuf, size_t ibufsize,
+int mappedfile_write(struct mappedfile **mfp, void *ibuf, size_t ibufsize,
                      size_t *nbytes);
 int mappedfile_write_iov(struct mappedfile **mfp, const struct iovec *iov,
                          unsigned int iov_cnt, size_t *nbytes);

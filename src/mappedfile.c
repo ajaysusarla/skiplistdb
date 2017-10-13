@@ -26,6 +26,9 @@
 
 
 static struct mappedfile mf_init = {"", -1, MAP_FAILED, -1, -1, 0};
+
+#define OPEN_MODE 0644
+
 /*
   mappedfile_open():
 
@@ -79,7 +82,7 @@ int mappedfile_open(const char *fname, uint32_t flags, struct mappedfile **mfp)
         if (flags & MAPPEDFILE_CREATE)
                 oflags |= O_CREAT;
 
-        mf->fd = open(fname, oflags);
+        mf->fd = open(fname, oflags, OPEN_MODE);
         if (mf->fd < 0) {
                 perror("mappedfile_open:open");
                 return errno;
@@ -185,7 +188,7 @@ int mappedfile_read(struct mappedfile **mfp, char *obuf, size_t obufsize,
  *   Success : 0
  *   Failre  : non zero
  */
-int mappedfile_write(struct mappedfile **mfp, char *ibuf, size_t ibufsize,
+int mappedfile_write(struct mappedfile **mfp, void *ibuf, size_t ibufsize,
                      size_t *nbytes)
 {
         struct mappedfile *mf = *mfp;
@@ -193,7 +196,10 @@ int mappedfile_write(struct mappedfile **mfp, char *ibuf, size_t ibufsize,
         if (mf == &mf_init || mf->ptr == MAP_FAILED)
                 return EINVAL;
 
-        if (!(mf->flags & MAPPEDFILE_WR) || !(mf->flags & MAPPEDFILE_RW))
+        if (!(mf->flags & MAPPEDFILE_WR)    ||
+            !(mf->flags & MAPPEDFILE_WR_CR) ||
+            !(mf->flags & MAPPEDFILE_RW)    ||
+            !(mf->flags & MAPPEDFILE_RW_CR))
                 return EACCES;
 
         if (mf->size < (mf->offset + ibufsize)) {

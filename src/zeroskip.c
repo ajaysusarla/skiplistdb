@@ -151,6 +151,7 @@ static int zs_write_header(struct zsdb_priv *priv)
 {
         int ret = SDB_OK;
         struct zs_header hdr;
+        size_t nbytes;
 
         hdr.signature = priv->header.signature;
         hdr.version = htonl(priv->header.version);
@@ -158,6 +159,8 @@ static int zs_write_header(struct zsdb_priv *priv)
         hdr.startidx = htonl(priv->header.startidx);
         hdr.endidx = htonl(priv->header.endidx);
         hdr.crc32 = htonl(priv->header.crc32);
+
+        ret = mappedfile_write(&priv->mf, (void *)&hdr, sizeof(hdr), &nbytes);
 
         return ret;
 }
@@ -167,7 +170,18 @@ static int zs_commit_header(struct zsdb_priv *priv)
         int ret;
 
         ret = zs_write_header(priv);
-        mappedfile_flush(&priv->mf);
+        if (ret) {
+                fprintf(stderr, "Error writing header.\n");
+                goto done;
+        }
+
+        ret = mappedfile_flush(&priv->mf);
+        if (ret) {
+                fprintf(stderr, "Error flushing mmaped() data.\n");
+                goto done;
+        }
+done:
+        return ret;
 }
 
 static int zs_write_record(struct zsdb_priv *priv, struct zs_rec *record,
@@ -244,8 +258,15 @@ static int zs_open(const char *fname, int flags,
                 goto done;
         }
 
+        priv->is_open = 1;
+
         mappedfile_size(&priv->mf, &mf_size);
         if (mf_size == 0) {
+                ret = zs_commit_header(priv);
+                if (ret) {
+                        fprintf(stderr, "Could not commit zeroskip header.\n");
+                        goto done;
+                }
         }
 
 done:
@@ -254,7 +275,17 @@ done:
 
 static int zs_close(struct skiplistdb *db)
 {
-        return SDB_NOTIMPLEMENTED;
+        struct zsdb_priv *priv;
+        int ret = SDB_OK;
+
+        assert(db);
+        assert(db->priv);
+
+        priv = (struct zsdb_priv *)db->priv;
+        assert(priv->mf);
+
+        mappedfile_close(&priv->mf);
+        return ret;
 }
 
 static int zs_sync(struct skiplistdb *db)
@@ -390,6 +421,7 @@ static const struct skiplistdb_operations zeroskip_ops = {
 struct skiplistdb * zeroskip_new(void)
 {
         struct skiplistdb *db = NULL;
+        struct zsdb_priv *priv = NULL;
 
         db = xcalloc(1, sizeof(struct skiplistdb));
         if (!db) {
@@ -402,13 +434,19 @@ struct skiplistdb * zeroskip_new(void)
         db->op = &zeroskip_ops;
 
         /* Allocate the private data structure */
-        db->priv = xcalloc(1, sizeof(struct zsdb_priv));
-        if (!db->priv) {
+        priv = xcalloc(1, sizeof(struct zsdb_priv));
+        if (!priv) {
                 fprintf(stderr, "Error allocating memory for private data\n");
                 xfree(db);
                 goto done;
         }
 
+        /* Setup the header */
+        priv->header.signature = ZS_HDR_SIGNATURE;
+        priv->header.version = ZS_HDR_VERSION;
+
+
+        db->priv = priv;
 done:
         return db;
 }
