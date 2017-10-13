@@ -253,7 +253,10 @@ int mappedfile_write_iov(struct mappedfile **mfp, const struct iovec *iov,
         if (mf == &mf_init || mf->ptr == MAP_FAILED)
                 return EINVAL;
 
-        if (!(mf->flags & MAPPEDFILE_WR) || !(mf->flags & MAPPEDFILE_RW))
+        if (!(mf->flags & MAPPEDFILE_WR)    ||
+            !(mf->flags & MAPPEDFILE_WR_CR) ||
+            !(mf->flags & MAPPEDFILE_RW)    ||
+            !(mf->flags & MAPPEDFILE_RW_CR))
                 return EACCES;
 
         for (i = 0; i < iov_cnt; i++) {
