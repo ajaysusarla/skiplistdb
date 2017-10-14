@@ -27,7 +27,7 @@ int cmd_delete(int argc, char **argv, const char *progname);
 #define cmd_delete_usage "delete "
 
 int cmd_dump(int argc, char **argv, const char *progname);
-#define cmd_dump_usage "dump [--config, -c] [--dump=recs|ptrs|all] [--dbtype=zeroskip|twoskip] DBFILE"
+#define cmd_dump_usage "dump [--config CONFIGFILE] [--dump=recs|ptrs|all] [--dbtype=zeroskip|twoskip] DBFILE"
 
 int cmd_consistent(int argc, char **argv, const char *progname);
 #define cmd_consistent_usage "consistent "
@@ -42,7 +42,7 @@ int cmd_batch(int argc, char **argv, const char *progname);
 #define cmd_batch_usage "batch "
 
 int cmd_new(int argc, char **argv, const char *progname);
-#define cmd_new_usage "new "
+#define cmd_new_usage "new [--config CONFIGFILE] --dbtype=zeroskip|twoskip DBFILENAME"
 
 void cmd_die_usage(const char *progname, const char *usage);
 

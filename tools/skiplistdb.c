@@ -63,9 +63,9 @@ static int global_options(int argc, char **argv)
                 {NULL, 0, NULL, 0}
         };
         int option;
-        int optind;
+        int option_index;
 
-        while((option = getopt_long(argc, argv, "vh", long_options, &optind)) != -1) {
+        while((option = getopt_long(argc, argv, "vh", long_options, &option_index)) != -1) {
                 switch (option) {
                 case 'v':
                         version();

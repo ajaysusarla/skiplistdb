@@ -23,14 +23,14 @@ int cmd_dump(int argc, char **argv, const char *progname)
                 {NULL, 0, NULL, 0}
         };
         int option;
-        int optind;
+        int option_index;
         const char *config_file = NULL;
         struct skiplistdb *db;
         const char *fname;
         DBDumpLevel level;
         DBType type;
 
-        while((option = getopt_long(argc, argv, "t", long_options, &optind)) != -1) {
+        while((option = getopt_long(argc, argv, "t", long_options, &option_index)) != -1) {
                 switch (option) {
                 case 'd':       /* level of detail */
                         level = parse_dump_level_string(optarg);

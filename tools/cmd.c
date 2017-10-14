@@ -38,7 +38,7 @@ DBDumpLevel parse_dump_level_string(const char *dblevel)
 
 DBType parse_dbtype_string(const char *dbtype)
 {
-        if (strcmp(dbtype,  "zeroskip") == 0)
+        if (!dbtype || strcmp(dbtype, "zeroskip") == 0)
                 return ZERO_SKIP;
         else if (strcmp(dbtype, "twoskip") == 0)
                 return TWO_SKIP;

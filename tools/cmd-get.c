@@ -20,10 +20,10 @@ int cmd_get(int argc, char **argv, const char *progname)
                 {NULL, 0, NULL, 0}
         };
         int option;
-        int optind;
+        int option_index;
         const char *config_file = NULL;
 
-        while((option = getopt_long(argc, argv, "c:h", long_options, &optind)) != -1) {
+        while((option = getopt_long(argc, argv, "c:h", long_options, &option_index)) != -1) {
                 switch (option) {
                 case 'c':
                         config_file = optarg;
