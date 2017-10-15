@@ -177,7 +177,7 @@ static int zs_commit_header(struct zsdb_priv *priv)
 
         ret = mappedfile_flush(&priv->mf);
         if (ret) {
-                fprintf(stderr, "Error flushing mmaped() data.\n");
+                fprintf(stderr, "Error syncing data.\n");
                 goto done;
         }
 done:

@@ -22,6 +22,7 @@ TWOSKIP_EXAMPLE=ts-example
 ZEROSKIP_EXAMPLE=zs-example
 
 SKIPLISTDB_INC=../src
+ZS_LIBS+= -luuid
 
 all: $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE)
 
