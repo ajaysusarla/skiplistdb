@@ -34,6 +34,8 @@ DBDumpLevel parse_dump_level_string(const char *dblevel)
                 return DB_DUMP_ALL;
         else
                 cmd_die_usage("...", "--dump=recs|ptrs|all");
+
+        return DB_DUMP_ALL;           /* Default to dump all */
 }
 
 DBType parse_dbtype_string(const char *dbtype)
@@ -44,4 +46,7 @@ DBType parse_dbtype_string(const char *dbtype)
                 return TWO_SKIP;
         else
                 cmd_die_usage("..", "--dbtype=zeroskip|twoskip");
+
+
+        return ZERO_SKIP;       /* Default to zeroskip */
 }
