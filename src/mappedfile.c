@@ -153,8 +153,8 @@ int mappedfile_close(struct mappedfile **mfp)
  *   Success : 0
  *   Failre  : non zero
  */
-int mappedfile_read(struct mappedfile **mfp, char *obuf, size_t obufsize,
-                    size_t *nbytes)
+int mappedfile_read(struct mappedfile **mfp, void *obuf,
+                    size_t obufsize, size_t *nbytes)
 {
         struct mappedfile *mf = *mfp;
         size_t n = 0;

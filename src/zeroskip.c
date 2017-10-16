@@ -24,9 +24,6 @@
  *  [Header]([Key|Value]+[Commit])+[Pointers][Commit]
  */
 
-#define ZS_HDR_SIGNATURE 0x5a45524f534b4950 /* "ZEROSKIP" */
-#define ZS_HDR_VERSION   1
-
 /**
  * The zeroskip header.
  */
@@ -43,11 +40,15 @@ enum {
 struct zs_header {
         uint64_t signature;         /* Signature */
         uint32_t version;           /* Version Number */
-        uuid_t   uuid;              /* UUID of DB */
+        uuid_t   uuid;              /* UUID of DB - 128 bits: unsigned char uuid_t[16];*/
         uint32_t startidx;          /* Start Index of DB range */
         uint32_t endidx;            /* End Index of DB range */
         uint32_t crc32;             /* CRC32 of rest of header */
 };
+
+#define ZS_HDR_SIGNATURE 0x5a45524f534b4950 /* "ZEROSKIP" */
+#define ZS_HDR_VERSION   1
+#define ZS_HDR_SIZE      40
 
 /**
  * The zeroskip record[key|value|commit]
@@ -126,7 +127,7 @@ struct zs_pointer {
         uint64_t      num_ptrs;
         uint64_t      num_shadowed_recs;
         uint64_t      num_shadowed_bytes;
-        struct zs_rec *key_ptry;
+        struct zs_rec *key_ptr;
 };
 
 /**
@@ -185,7 +186,7 @@ done:
 }
 
 static int zs_write_record(struct zsdb_priv *priv, struct zs_rec *record,
-                           const char *key, const char *val)
+                           unsigned char *key, unsigned char *val)
 {
         int ret = SDB_OK;
 
@@ -308,32 +309,32 @@ static int zs_unlink(struct skiplistdb *db, const char *fname, int flags)
 }
 
 static int zs_fetch(struct skiplistdb *db,
-             const char *key, size_t keylen,
-             const char **data, size_t *datalen,
+             unsigned char *key, size_t keylen,
+             unsigned  char **data, size_t *datalen,
              struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int zs_fetchlock(struct skiplistdb *db,
-                 const char *key, size_t keylen,
-                 const char **data, size_t *datalen,
+                 unsigned char *key, size_t keylen,
+                 unsigned char **data, size_t *datalen,
                  struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int zs_fetchnext(struct skiplistdb *db,
-                 const char *key, size_t keylen,
-                 const char **foundkey, size_t *foundkeylen,
-                 const char **data, size_t *datalen,
+                 unsigned char *key, size_t keylen,
+                 unsigned char **foundkey, size_t *foundkeylen,
+                 unsigned char **data, size_t *datalen,
                  struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int zs_foreach(struct skiplistdb *db,
-               const char *prefix, size_t prefixlen,
+               unsigned char *prefix, size_t prefixlen,
                foreach_p *p, foreach_cb *cb, void *rock,
                struct txn **tid)
 {
@@ -341,23 +342,23 @@ static int zs_foreach(struct skiplistdb *db,
 }
 
 static int zs_add(struct skiplistdb *db,
-           const char *key, size_t keylen,
-           const char *data, size_t datalen,
+           unsigned char *key, size_t keylen,
+           unsigned char *data, size_t datalen,
            struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int zs_remove(struct skiplistdb *db,
-              const char *key, size_t keylen,
+              unsigned char *key, size_t keylen,
               struct txn **tid, int force)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int zs_store(struct skiplistdb *db,
-             const char *key, size_t keylen,
-             const char *data, size_t datalen,
+             unsigned char *key, size_t keylen,
+             unsigned char *data, size_t datalen,
              struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
@@ -389,7 +390,7 @@ static int zs_repack(struct skiplistdb *db)
 }
 
 static int zs_cmp(struct skiplistdb *db,
-           const char *s1, int l1, const char *s2, int l2)
+           unsigned char *s1, int l1, unsigned char *s2, int l2)
 {
         return SDB_NOTIMPLEMENTED;
 }
@@ -441,7 +442,7 @@ struct skiplistdb * zeroskip_new(void)
                 goto done;
         }
 
-        /* Setup the header */
+        /* Setup default header values */
         priv->header.signature = ZS_HDR_SIGNATURE;
         priv->header.version = ZS_HDR_VERSION;
 

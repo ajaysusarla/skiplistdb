@@ -125,7 +125,7 @@ struct tsdb_priv {
 
         /* compare function for sorting */
         int open_flags;
-        int (*compare)(const char *s1, int l1, const char *s2, int l2);
+        int (*compare)(unsigned char *s1, int l1, unsigned char *s2, int l2);
 };
 
 struct tsdb_list {
@@ -176,32 +176,32 @@ static int ts_unlink(struct skiplistdb *db, const char *fname, int flags)
 }
 
 static int ts_fetch(struct skiplistdb *db,
-             const char *key, size_t keylen,
-             const char **data, size_t *datalen,
+             unsigned char *key, size_t keylen,
+             unsigned char **data, size_t *datalen,
              struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int ts_fetchlock(struct skiplistdb *db,
-                 const char *key, size_t keylen,
-                 const char **data, size_t *datalen,
+                 unsigned char *key, size_t keylen,
+                 unsigned char **data, size_t *datalen,
                  struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int ts_fetchnext(struct skiplistdb *db,
-                 const char *key, size_t keylen,
-                 const char **foundkey, size_t *foundkeylen,
-                 const char **data, size_t *datalen,
+                 unsigned char *key, size_t keylen,
+                 unsigned char **foundkey, size_t *foundkeylen,
+                 unsigned char **data, size_t *datalen,
                  struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int ts_foreach(struct skiplistdb *db,
-               const char *prefix, size_t prefixlen,
+               unsigned char *prefix, size_t prefixlen,
                foreach_p *p, foreach_cb *cb, void *rock,
                struct txn **tid)
 {
@@ -209,23 +209,23 @@ static int ts_foreach(struct skiplistdb *db,
 }
 
 static int ts_add(struct skiplistdb *db,
-           const char *key, size_t keylen,
-           const char *data, size_t datalen,
+           unsigned char *key, size_t keylen,
+           unsigned char *data, size_t datalen,
            struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int ts_remove(struct skiplistdb *db,
-              const char *key, size_t keylen,
+              unsigned char *key, size_t keylen,
               struct txn **tid, int force)
 {
         return SDB_NOTIMPLEMENTED;
 }
 
 static int ts_store(struct skiplistdb *db,
-             const char *key, size_t keylen,
-             const char *data, size_t datalen,
+             unsigned char *key, size_t keylen,
+             unsigned char *data, size_t datalen,
              struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
@@ -257,7 +257,7 @@ static int ts_repack(struct skiplistdb *db)
 }
 
 static int ts_cmp(struct skiplistdb *db,
-           const char *s1, int l1, const char *s2, int l2)
+           unsigned char *s1, int l1, unsigned char *s2, int l2)
 {
         return SDB_NOTIMPLEMENTED;
 }

@@ -41,7 +41,7 @@ enum {
 int mappedfile_open(const char *fname, uint32_t flags,
                     struct mappedfile **mfp);
 int mappedfile_close(struct mappedfile **mfp);
-int mappedfile_read(struct mappedfile **mfp, char *obuf, size_t obufsize,
+int mappedfile_read(struct mappedfile **mfp, void *obuf, size_t obufsize,
                     size_t *nbytes);
 int mappedfile_write(struct mappedfile **mfp, void *ibuf, size_t ibufsize,
                      size_t *nbytes);

@@ -140,8 +140,8 @@ int skiplistdb_unlink(struct skiplistdb *db, const char *fname, int flags)
 }
 
 int skiplistdb_fetch(struct skiplistdb *db,
-                     const char *key, size_t keylen,
-                     const char **data, size_t *datalen,
+                     unsigned char *key, size_t keylen,
+                     unsigned char **data, size_t *datalen,
                      struct txn **tid)
 {
         if (db && db->op && db->op->fetch)
@@ -151,8 +151,8 @@ int skiplistdb_fetch(struct skiplistdb *db,
 }
 
 int skilistdb_fetchlock(struct skiplistdb *db,
-                        const char *key, size_t keylen,
-                        const char **data, size_t *datalen,
+                        unsigned char *key, size_t keylen,
+                        unsigned char **data, size_t *datalen,
                         struct txn **tid)
 {
         if (db && db->op && db->op->fetchlock)
@@ -162,9 +162,9 @@ int skilistdb_fetchlock(struct skiplistdb *db,
 }
 
 int skiplistdb_fetchnext(struct skiplistdb *db,
-                         const char *key, size_t keylen,
-                         const char **foundkey, size_t *foundkeylen,
-                         const char **data, size_t *datalen,
+                         unsigned char *key, size_t keylen,
+                         unsigned char **foundkey, size_t *foundkeylen,
+                         unsigned char **data, size_t *datalen,
                          struct txn **tid)
 {
         if (db && db->op && db->op->fetchnext)
@@ -175,7 +175,7 @@ int skiplistdb_fetchnext(struct skiplistdb *db,
 }
 
 int skiplistdb_foreach(struct skiplistdb *db,
-                       const char *prefix, size_t prefixlen,
+                       unsigned char *prefix, size_t prefixlen,
                        foreach_p *p, foreach_cb *cb, void *rock,
                        struct txn **tid)
 {
@@ -186,8 +186,8 @@ int skiplistdb_foreach(struct skiplistdb *db,
 }
 
 int skiplistdb_add(struct skiplistdb *db,
-                   const char *key, size_t keylen,
-                   const char *data, size_t datalen,
+                   unsigned char *key, size_t keylen,
+                   unsigned char *data, size_t datalen,
                    struct txn **tid)
 {
         if (db && db->op && db->op->add)
@@ -197,7 +197,7 @@ int skiplistdb_add(struct skiplistdb *db,
 }
 
 int skiplistdb_remove(struct skiplistdb *db,
-                      const char *key, size_t keylen,
+                      unsigned char *key, size_t keylen,
                       struct txn **tid, int force)
 {
         if (db && db->op && db->op->remove)
@@ -207,8 +207,8 @@ int skiplistdb_remove(struct skiplistdb *db,
 }
 
 int skiplistdb_store(struct skiplistdb *db,
-                     const char *key, size_t keylen,
-                     const char *data, size_t datalen,
+                     unsigned char *key, size_t keylen,
+                     unsigned char *data, size_t datalen,
                      struct txn **tid)
 {
         if (db && db->op && db->op->store)
@@ -258,7 +258,7 @@ int skiplistdb_repack(struct skiplistdb *db)
 }
 
 int skiplistdb_cmp(struct skiplistdb *db,
-                   const char *s1, int l1, const char *s2, int l2)
+                   unsigned char *s1, int l1, unsigned char *s2, int l2)
 {
         if (db && db->op && db->op->cmp)
                 return db->op->cmp(db, s1, l1, s2, l2);

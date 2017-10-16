@@ -60,12 +60,12 @@ struct skiplistdb;
 
 /* callback */
 typedef int foreach_p(void *rock,
-                       const char *key, size_t keylen,
-                       const char *data, size_t datalen);
+                      unsigned char *key, size_t keylen,
+                      unsigned char *data, size_t datalen);
 
 typedef int foreach_cb(void *rock,
-                        const char *key, size_t keylen,
-                        const char *data, size_t datalen);
+                       unsigned char *key, size_t keylen,
+                       unsigned char *data, size_t datalen);
 
 
 /*
@@ -79,30 +79,30 @@ struct skiplistdb_operations {
         int (*sync)(struct skiplistdb *db);
         int (*archive)(struct skiplistdb *db, const struct str_array *fnames, const char *dirname);
         int (*unlink)(struct skiplistdb *db, const char *fname, int flags);
-        int (*fetch)(struct skiplistdb *db, const char *key, size_t keylen,
-                     const char **data, size_t *datalen, struct txn **tid);
-        int (*fetchlock)(struct skiplistdb *db, const char *key, size_t keylen,
-                         const char **data, size_t *datalen, struct txn **tid);
-        int (*fetchnext)(struct skiplistdb *db, const char *key, size_t keylen,
-                         const char **foundkey, size_t *foundkeylen,
-                         const char **data, size_t *datalen, struct txn **tid);
+        int (*fetch)(struct skiplistdb *db, unsigned char *key, size_t keylen,
+                     unsigned char **data, size_t *datalen, struct txn **tid);
+        int (*fetchlock)(struct skiplistdb *db, unsigned char *key, size_t keylen,
+                         unsigned char **data, size_t *datalen, struct txn **tid);
+        int (*fetchnext)(struct skiplistdb *db, unsigned char *key, size_t keylen,
+                         unsigned char **foundkey, size_t *foundkeylen,
+                         unsigned char **data, size_t *datalen, struct txn **tid);
         int (*foreach)(struct skiplistdb *db,
-                        const char *prefix, size_t prefixlen,
+                        unsigned char *prefix, size_t prefixlen,
                         foreach_p *p, foreach_cb *cb, void *rock,
                         struct txn **tid);
-        int (*add)(struct skiplistdb *db, const char *key, size_t keylen,
-                   const char *data, size_t datalen, struct txn **tid);
-        int (*remove)(struct skiplistdb *db, const char *key, size_t keylen,
+        int (*add)(struct skiplistdb *db, unsigned char *key, size_t keylen,
+                   unsigned char *data, size_t datalen, struct txn **tid);
+        int (*remove)(struct skiplistdb *db, unsigned char *key, size_t keylen,
                       struct txn **tid, int force);
-        int (*store)(struct skiplistdb *db, const char *key, size_t keylen,
-                     const char *data, size_t datalen, struct txn **tid);
+        int (*store)(struct skiplistdb *db, unsigned char *key, size_t keylen,
+                     unsigned char *data, size_t datalen, struct txn **tid);
         int (*commit)(struct skiplistdb *db, struct txn **tid);
         int (*abort)(struct skiplistdb *db, struct txn **tid);
         int (*dump)(struct skiplistdb *db, DBDumpLevel level);
         int (*consistent)(struct skiplistdb *db);
         int (*repack)(struct skiplistdb *db);
         int (*cmp)(struct skiplistdb *db,
-                   const char *s1, int l1, const char *s2, int l2);
+                   unsigned char *s1, int l1, unsigned char *s2, int l2);
 };
 
 struct skiplistdb {
@@ -125,32 +125,32 @@ int skiplistdb_archive(struct skiplistdb *db, const struct str_array *fnames,
                        const char *dirname);
 int skiplistdb_unlink(struct skiplistdb *db, const char *fname, int flags);
 int skiplistdb_fetch(struct skiplistdb *db,
-                     const char *key, size_t keylen,
-                     const char **data, size_t *datalen,
+                     unsigned char *key, size_t keylen,
+                     unsigned char **data, size_t *datalen,
                      struct txn **tid);
 int skilistdb_fetchlock(struct skiplistdb *db,
-                        const char *key, size_t keylen,
-                        const char **data, size_t *datalen,
+                        unsigned char *key, size_t keylen,
+                        unsigned char **data, size_t *datalen,
                         struct txn **tid);
 int skiplistdb_fetchnext(struct skiplistdb *db,
-                         const char *key, size_t keylen,
-                         const char **foundkey, size_t *foundkeylen,
-                         const char **data, size_t *datalen,
+                         unsigned char *key, size_t keylen,
+                         unsigned char **foundkey, size_t *foundkeylen,
+                         unsigned char **data, size_t *datalen,
                          struct txn **tid);
 int skiplistdb_foreach(struct skiplistdb *db,
-                       const char *prefix, size_t prefixlen,
+                       unsigned char *prefix, size_t prefixlen,
                        foreach_p *p, foreach_cb *cb, void *rock,
                        struct txn **tid);
 int skiplistdb_add(struct skiplistdb *db,
-                   const char *key, size_t keylen,
-                   const char *data, size_t datalen,
+                   unsigned char *key, size_t keylen,
+                   unsigned char *data, size_t datalen,
                    struct txn **tid);
 int skiplistdb_remove(struct skiplistdb *db,
-                      const char *key, size_t keylen,
+                      unsigned char *key, size_t keylen,
                       struct txn **tid, int force);
 int skiplistdb_store(struct skiplistdb *db,
-                     const char *key, size_t keylen,
-                     const char *data, size_t datalen,
+                     unsigned char *key, size_t keylen,
+                     unsigned char *data, size_t datalen,
                      struct txn **tid);
 int skiplistdb_commit(struct skiplistdb *db,
                       struct txn **tid);
@@ -161,7 +161,7 @@ int skiplistdb_dump(struct skiplistdb *db,
 int skiplistdb_consistent(struct skiplistdb *db);
 int skiplistdb_repack(struct skiplistdb *db);
 int skiplistdb_cmp(struct skiplistdb *db,
-                   const char *s1, int l1, const char *s2, int l2);
+                   unsigned char *s1, int l1, unsigned char *s2, int l2);
 
 
 /* Utility functions for skiplistdb */
