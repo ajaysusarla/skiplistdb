@@ -75,6 +75,7 @@ struct zs_short_key {
         uint8_t  padding[7];
 
 };
+
 struct zs_long_key {
         uint8_t  padding1[7];
         uint64_t length;
@@ -108,6 +109,10 @@ struct zs_long_commit {
         uint8_t  padding2[3];
         uint32_t crc32;
 };
+
+#define MAX_SHORT_KEY_LEN 65536
+#define MAX_SHORT_VAL_LEN 16777216
+
 struct zs_rec {
         uint8_t type;
         union {
@@ -148,6 +153,23 @@ struct zsdb_priv {
         size_t end;
 };
 
+/**
+ * Functions
+ */
+static inline int rec_offset(uint8_t type, size_t datalen)
+{
+        switch(type) {
+        case REC_TYPE_SHORT_KEY:
+                return sizeof(struct zs_short_key) + datalen;
+        case REC_TYPE_LONG_KEY:
+                return sizeof(struct zs_long_key) + datalen;
+        case REC_TYPE_SHORT_VALUE:
+                return sizeof(struct zs_short_val) + datalen;
+        case REC_TYPE_LONG_VALUE:
+                return sizeof(struct zs_long_val) + datalen;
+        }
+}
+
 static int zs_write_header(struct zsdb_priv *priv)
 {
         int ret = SDB_OK;
@@ -162,38 +184,32 @@ static int zs_write_header(struct zsdb_priv *priv)
         hdr.crc32 = htonl(priv->header.crc32);
 
         ret = mappedfile_write(&priv->mf, (void *)&hdr, sizeof(hdr), &nbytes);
-
-        return ret;
-}
-
-static int zs_commit_header(struct zsdb_priv *priv)
-{
-        int ret;
-
-        ret = zs_write_header(priv);
         if (ret) {
                 fprintf(stderr, "Error writing header.\n");
                 goto done;
         }
 
+        /* flush the change to disk */
         ret = mappedfile_flush(&priv->mf);
         if (ret) {
-                fprintf(stderr, "Error syncing data.\n");
+                /* TODO: try again before giving up */
+                fprintf(stderr, "Error flushing data to disk.\n");
                 goto done;
         }
+
 done:
         return ret;
 }
 
-static int zs_write_record(struct zsdb_priv *priv, struct zs_rec *record,
-                           unsigned char *key, unsigned char *val)
+static int zs_write_record(struct zsdb_priv *priv, enum record_t type,
+                           unsigned char *key, size_t keylen,
+                           unsigned char *val, size_t vallen)
 {
         int ret = SDB_OK;
 
         assert(priv);
-        assert(record);
 
-        switch(record->type) {
+        switch(type) {
         case REC_TYPE_SHORT_KEY:
                 break;
         case REC_TYPE_LONG_KEY:
@@ -222,6 +238,84 @@ static int zs_write_record(struct zsdb_priv *priv, struct zs_rec *record,
         }
 
 done:
+        return ret;
+}
+
+static int zs_write_short_key(struct zsdb_priv *priv, struct zs_rec *keyrec)
+{
+        int ret = SDB_OK;
+        struct zs_short_key key;
+        uint8_t type;
+
+        type = htonl(keyrec->type);
+        key.length = htonl(keyrec->rec.skey.length);
+        key.data = keyrec->rec.skey.data;
+
+        return ret;
+}
+
+static int zs_write_long_key(struct zsdb_priv *priv, struct zs_rec *keyrec)
+{
+        int ret = SDB_OK;
+        struct zs_long_key key;
+        uint8_t type;
+
+        type = htonl(keyrec->type);
+        key.length = htonl(keyrec->rec.lkey.length);
+        key.data = keyrec->rec.lkey.data;
+
+        return ret;
+}
+
+static int zs_write_short_val(struct zsdb_priv *priv, struct zs_rec *valrec)
+{
+        int ret = SDB_OK;
+        struct zs_short_val val;
+        uint8_t type;
+
+        type = htonl(valrec->type);
+        val.length = htonl(valrec->rec.sval.length);
+        val.data = valrec->rec.sval.data;
+
+        return ret;
+}
+
+static int zs_write_long_val(struct zsdb_priv *priv, struct zs_rec *valrec)
+{
+        int ret = SDB_OK;
+        struct zs_long_val val;
+        uint8_t type;
+
+        type = htonl(valrec->type);
+        val.length = htonl(valrec->rec.lval.length);
+        val.data = valrec->rec.lval.data;
+
+        return ret;
+}
+
+static int zs_write_key_val_record(struct zsdb_priv *priv,
+                                   struct zs_rec *keyrec,
+                                   struct zs_rec *valrec)
+{
+        size_t bytes_written;
+        int ret = SDB_OK;
+
+        if (keyrec->type == REC_TYPE_SHORT_KEY) {
+                zs_write_short_key(priv, keyrec);
+        } else if (keyrec->type == REC_TYPE_LONG_KEY) {
+                zs_write_long_key(priv, keyrec);
+        } else {
+                fprintf(stderr, "Invalid type for Key record!\n");
+                /* XXX: Rollback & Exit? */
+        }
+
+        if (valrec->type == REC_TYPE_SHORT_VALUE) {
+        } else if (valrec->type == REC_TYPE_SHORT_VALUE) {
+        } else {
+                fprintf(stderr, "Invalid type for Value record!\n");
+                /* XXX: Rollback & Exit? */
+        }
+
         return ret;
 }
 
@@ -263,9 +357,9 @@ static int zs_open(const char *fname, int flags,
 
         mappedfile_size(&priv->mf, &mf_size);
         if (mf_size == 0) {
-                ret = zs_commit_header(priv);
+                ret = zs_write_header(priv);
                 if (ret) {
-                        fprintf(stderr, "Could not commit zeroskip header.\n");
+                        fprintf(stderr, "Could not write zeroskip header.\n");
                         goto done;
                 }
         }
@@ -346,7 +440,44 @@ static int zs_add(struct skiplistdb *db,
            unsigned char *data, size_t datalen,
            struct txn **tid)
 {
-        return SDB_NOTIMPLEMENTED;
+        int ret = SDB_OK;
+        struct zs_rec keyrec, valrec;
+        struct zsdb_priv *priv;
+
+        assert(db);
+        assert(key);
+        assert(data);
+
+        priv = db->priv;
+        assert(priv);
+
+        /* Key */
+        if (keylen <= MAX_SHORT_KEY_LEN) {
+                keyrec.type = REC_TYPE_SHORT_KEY;
+                keyrec.rec.skey.length = keylen;
+                keyrec.rec.skey.ptr_to_val = NULL;
+                keyrec.rec.skey.data = key;
+        } else {
+                keyrec.type = REC_TYPE_LONG_KEY;
+                keyrec.rec.lkey.length = keylen;
+                keyrec.rec.lkey.ptr_to_val = NULL;
+                keyrec.rec.lkey.data = key;
+        }
+
+        /* Value */
+        if (datalen <= MAX_SHORT_VAL_LEN) {
+                valrec.type = REC_TYPE_SHORT_VALUE;
+                valrec.rec.sval.length = datalen;
+                valrec.rec.sval.data = data;
+        } else {
+                valrec.type = REC_TYPE_LONG_VALUE;
+                valrec.rec.lval.length = datalen;
+                valrec.rec.lval.data = data;
+        }
+
+        ret = zs_write_key_val_record(priv, &keyrec, &valrec);
+
+        return SDB_OK;
 }
 
 static int zs_remove(struct skiplistdb *db,
