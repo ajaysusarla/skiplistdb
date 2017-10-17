@@ -154,8 +154,8 @@ struct zsdb_priv {
 };
 
 /**
- * Functions
- */
+ ** Private functions
+ **/
 static inline int rec_offset(uint8_t type, size_t datalen)
 {
         switch(type) {
@@ -550,6 +550,9 @@ static const struct skiplistdb_operations zeroskip_ops = {
         .cmp          = zs_cmp,
 };
 
+/**
+ ** Public functions
+ **/
 struct skiplistdb * zeroskip_new(void)
 {
         struct skiplistdb *db = NULL;
