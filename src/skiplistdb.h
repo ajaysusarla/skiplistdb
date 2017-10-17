@@ -44,6 +44,7 @@ enum {
         SDB_NOTIMPLEMENTED = -6,
         SDB_FULL           = -7,
         SDB_ERROR          = -8,
+        SDB_INVALID_DB     = -9,
 };
 
 /* DB File Flags */

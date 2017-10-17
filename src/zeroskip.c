@@ -18,6 +18,9 @@
 #include <uuid/uuid.h>
 
 
+#define ALIGN64(x) (((x) + 7ULL) & ~7ULL)
+#define VALID64(x) (((x) & 7ULL) == 0ULL)
+
 /*
  *  Zero skip on-disk file format:
  *
@@ -201,6 +204,49 @@ done:
         return ret;
 }
 
+/*
+ * check_zsdb_header: check if a mapped db file is contains a valid
+ *                    header.
+ *                    This function expects the db file to open using
+ *                    mappedfile_open().
+ * Returns:
+ *        Success: returns SDB_OK
+ */
+static int check_zsdb_header(struct zsdb_priv *priv)
+{
+        int ret = SDB_OK;
+        size_t mfsize;
+        struct zs_header *hdr;
+        uint32_t version;
+
+        if (priv->mf->fd < 0)
+                return SDB_ERROR;
+
+        mappedfile_size(&priv->mf, &mfsize);
+        if (mfsize < ZS_HDR_SIZE) {
+                fprintf(stderr, "File too small to be zeroskip DB.\n");
+                return SDB_INVALID_DB;
+        }
+
+        hdr = (struct zs_header *)priv->mf->ptr;
+        if (hdr->signature == ZS_HDR_SIGNATURE) {
+                version = ntohl(hdr->version);
+
+                if (version != 1) {
+                        fprintf(stderr, "Invalid zeroskip DB version.\n");
+                        return SDB_INVALID_DB;
+                }
+        }
+
+        if (version == 1) {
+                fprintf(stderr, "Valid zeroskip DB file. Version: %d\n", version);
+        }
+
+        /* XXX: Check crc32, Assign uuid, startidx and endidx */
+
+        return ret;
+}
+
 static int zs_write_record(struct zsdb_priv *priv, enum record_t type,
                            unsigned char *key, size_t keylen,
                            unsigned char *val, size_t vallen)
@@ -353,16 +399,26 @@ static int zs_open(const char *fname, int flags,
                 goto done;
         }
 
-        priv->is_open = 1;
-
         mappedfile_size(&priv->mf, &mf_size);
+        /* The filesize is zero, it is a new file. */
         if (mf_size == 0) {
                 ret = zs_write_header(priv);
                 if (ret) {
                         fprintf(stderr, "Could not write zeroskip header.\n");
+                        mappedfile_close(&priv->mf);
                         goto done;
                 }
         }
+
+        priv->is_open = 1;
+
+        if (check_zsdb_header(priv)) {
+                ret = SDB_INVALID_DB;
+                mappedfile_close(&priv->mf);
+                goto done;
+        }
+
+        /* XXX: Verify if the DB is sane */
 
 done:
         return ret;
