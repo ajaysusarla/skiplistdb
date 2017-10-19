@@ -10,11 +10,13 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 
+#include <arpa/inet.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <endian.h>
 
 #include "macros.h"
 
@@ -44,6 +46,35 @@ inline size_t off_to_size_t(off_t len)
 
 
 #define ENSURE_NON_NULL(p) p?p:""
+
+/*
+ * Endiness utils
+ */
+#define hton8(x)  (x)
+#define ntoh8(x)  (x)
+#define hton16(x) htons(x)
+#define ntoh16(x) ntohs(x)
+#define hton32(x) htonl(x)
+#define ntoh32(x) ntohl(x)
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+
+static __inline uint64_t hton64(uint64_t num)
+{
+        register uint32_t u, l;
+        u = num >> 32;
+        l = (uint32_t) num;
+
+        return htonl(u) | ((uint64_t)htonl(l) << 32);
+}
+#define ntoh64(_x)        hton64(_x)
+
+#elif BYTE_ORDER == BIG_ENDIAN
+
+#define hton64(_x)        (_x)
+#define ntoh64(_x)        hton64(_x)
+
+#endif
 
 /*
  * ARRAY_SIZE - get the number of elements in a visible array
