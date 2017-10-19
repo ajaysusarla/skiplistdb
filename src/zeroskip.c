@@ -7,8 +7,8 @@
  *
  */
 
-#include "zeroskip.h"
 #include "util.h"
+#include "zeroskip.h"
 #include "mappedfile.h"
 
 #include <arpa/inet.h>
@@ -20,6 +20,7 @@
 
 #define ALIGN64(x) (((x) + 7ULL) & ~7ULL)
 #define VALID64(x) (((x) & 7ULL) == 0ULL)
+
 
 /*
  *  Zero skip on-disk file format:
@@ -115,6 +116,10 @@ struct zs_long_commit {
 
 #define MAX_SHORT_KEY_LEN 65536
 #define MAX_SHORT_VAL_LEN 16777216
+
+//static size_t SCRATCHBUFSIZ = (8 * 1024);
+#define SCRATCHBUFSIZ 8192
+static unsigned char scratch[SCRATCHBUFSIZ];
 
 struct zs_rec {
         uint8_t type;
@@ -287,54 +292,98 @@ done:
         return ret;
 }
 
-static int zs_write_short_key(struct zsdb_priv *priv, struct zs_rec *keyrec)
+static int prepare_short_key(struct zs_rec *keyrec, unsigned char **bufp)
 {
         int ret = SDB_OK;
-        struct zs_short_key key;
-        uint8_t type;
+        uint16_t length;
+        unsigned char *val_loc;
 
-        type = htonl(keyrec->type);
-        key.length = htonl(keyrec->rec.skey.length);
-        key.data = keyrec->rec.skey.data;
+        /* type */
+        memcpy(*bufp, &keyrec->type, sizeof(keyrec->type));
+        *bufp += sizeof(keyrec->type);
+
+        /* length */
+        length = hton16(keyrec->rec.skey.length);
+        memcpy(*bufp, &length, sizeof(length));
+        *bufp += sizeof(length);
+
+        /* pointer to the value */
+        val_loc = *bufp + keyrec->rec.skey.length;
+        memcpy(*bufp, val_loc, sizeof(val_loc));
+        *bufp += sizeof(val_loc);
+
+        /* key data */
+        memcpy(*bufp, keyrec->rec.skey.data, keyrec->rec.skey.length);
+        *bufp += keyrec->rec.skey.length;
 
         return ret;
 }
 
-static int zs_write_long_key(struct zsdb_priv *priv, struct zs_rec *keyrec)
+static int prepare_long_key(struct zs_rec *keyrec, unsigned char **bufp)
 {
         int ret = SDB_OK;
-        struct zs_long_key key;
-        uint8_t type;
+        uint64_t length;
+        unsigned char *val_loc;
 
-        type = htonl(keyrec->type);
-        key.length = htonl(keyrec->rec.lkey.length);
-        key.data = keyrec->rec.lkey.data;
+        /* type */
+        memcpy(*bufp, &keyrec->type, sizeof(keyrec->type));
+        *bufp += sizeof(keyrec->type);
+
+        /* length */
+        length = hton64(keyrec->rec.lkey.length);
+        memcpy(*bufp, &length, sizeof(length));
+        *bufp += sizeof(length);
+
+        /* pointer to the value */
+        val_loc = *bufp + keyrec->rec.lkey.length;
+        memcpy(*bufp, val_loc, sizeof(val_loc));
+        *bufp += sizeof(val_loc);
+
+        /* key data */
+        memcpy(*bufp, keyrec->rec.lkey.data, keyrec->rec.lkey.length);
+        *bufp += keyrec->rec.lkey.length;
 
         return ret;
 }
 
-static int zs_write_short_val(struct zsdb_priv *priv, struct zs_rec *valrec)
+static int prepare_short_val(struct zs_rec *valrec, unsigned char **bufp)
 {
         int ret = SDB_OK;
-        struct zs_short_val val;
-        uint8_t type;
+        uint32_t length;
 
-        type = htonl(valrec->type);
-        val.length = htonl(valrec->rec.sval.length);
-        val.data = valrec->rec.sval.data;
+        /* type */
+        memcpy(*bufp, &valrec->type, sizeof(valrec->type));
+        *bufp += sizeof(valrec->type);
+
+        /* length */
+        length = hton32(valrec->rec.sval.length);
+        memcpy(*bufp, &length, sizeof(length));
+        *bufp += sizeof(length);
+
+        /* val data */
+        memcpy(*bufp, valrec->rec.sval.data, valrec->rec.sval.length);
+        *bufp += valrec->rec.sval.length;
 
         return ret;
 }
 
-static int zs_write_long_val(struct zsdb_priv *priv, struct zs_rec *valrec)
+static int prepare_long_val(struct zs_rec *valrec, unsigned char **bufp)
 {
         int ret = SDB_OK;
-        struct zs_long_val val;
-        uint8_t type;
+        uint64_t length;
 
-        type = htonl(valrec->type);
-        val.length = htonl(valrec->rec.lval.length);
-        val.data = valrec->rec.lval.data;
+        /* type */
+        memcpy(*bufp, &valrec->type, sizeof(valrec->type));
+        *bufp += sizeof(valrec->type);
+
+        /* length */
+        length = hton64(valrec->rec.lval.length);
+        memcpy(*bufp, &length, sizeof(length));
+        *bufp += sizeof(length);
+
+        /* val data */
+        memcpy(*bufp, valrec->rec.lval.data, valrec->rec.lval.length);
+        *bufp += valrec->rec.lval.length;
 
         return ret;
 }
@@ -343,25 +392,51 @@ static int zs_write_key_val_record(struct zsdb_priv *priv,
                                    struct zs_rec *keyrec,
                                    struct zs_rec *valrec)
 {
-        size_t bytes_written;
+        size_t bytes_written, bytes;
         int ret = SDB_OK;
+        unsigned char *sptr;
+
+        memset(&scratch, 0, SCRATCHBUFSIZ);
+        sptr = scratch;
+        bytes = 0;
 
         if (keyrec->type == REC_TYPE_SHORT_KEY) {
-                zs_write_short_key(priv, keyrec);
+                prepare_short_key(keyrec, &sptr);
         } else if (keyrec->type == REC_TYPE_LONG_KEY) {
-                zs_write_long_key(priv, keyrec);
+                prepare_long_key(keyrec, &sptr);
         } else {
                 fprintf(stderr, "Invalid type for Key record!\n");
                 /* XXX: Rollback & Exit? */
         }
 
         if (valrec->type == REC_TYPE_SHORT_VALUE) {
-        } else if (valrec->type == REC_TYPE_SHORT_VALUE) {
+                prepare_short_val(valrec, &sptr);
+        } else if (valrec->type == REC_TYPE_LONG_VALUE) {
+                prepare_long_val(valrec, &sptr);
         } else {
                 fprintf(stderr, "Invalid type for Value record!\n");
                 /* XXX: Rollback & Exit? */
         }
 
+        bytes = sptr - scratch;
+
+        ret = mappedfile_write(&priv->mf, (void *)scratch, bytes, &bytes_written);
+        if (ret) {
+                fprintf(stderr, "Error writing record");
+                goto done;
+        }
+
+        assert(bytes_written == bytes);
+
+        /* Flush the change to disk */
+        ret = mappedfile_flush(&priv->mf);
+        if (ret) {
+                /* TODO: try again before giving up */
+                fprintf(stderr, "Error flushing data to disk.\n");
+                goto done;
+        }
+
+done:
         return ret;
 }
 

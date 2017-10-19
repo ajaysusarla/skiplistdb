@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "skiplistdb.h"
 
@@ -28,6 +29,14 @@ int main(int argc __attribute__((unused)), char **argv __attribute__((unused)))
                 goto quit;
         }
 
+        if (skiplistdb_add(db, "FOO", strlen("FOO"), "BAR", strlen("BAR"), &tid) != SDB_OK) {
+                fprintf(stderr, "Cannot add keyval to %s\n", DBFNAME);
+                ret = EXIT_FAILURE;
+                goto fail;
+        }
+
+
+fail:
         skiplistdb_close(db);
 quit:
         exit(ret);
