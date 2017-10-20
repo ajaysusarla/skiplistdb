@@ -406,7 +406,8 @@ static int zs_write_key_val_record(struct zsdb_priv *priv,
                 prepare_long_key(keyrec, &sptr);
         } else {
                 fprintf(stderr, "Invalid type for Key record!\n");
-                /* XXX: Rollback & Exit? */
+                ret = SDB_INTERNAL;
+                goto done;
         }
 
         if (valrec->type == REC_TYPE_SHORT_VALUE) {
@@ -415,7 +416,8 @@ static int zs_write_key_val_record(struct zsdb_priv *priv,
                 prepare_long_val(valrec, &sptr);
         } else {
                 fprintf(stderr, "Invalid type for Value record!\n");
-                /* XXX: Rollback & Exit? */
+                ret = SDB_INTERNAL;
+                goto done;
         }
 
         bytes = sptr - scratch;
@@ -423,6 +425,7 @@ static int zs_write_key_val_record(struct zsdb_priv *priv,
         ret = mappedfile_write(&priv->mf, (void *)scratch, bytes, &bytes_written);
         if (ret) {
                 fprintf(stderr, "Error writing record");
+                ret = SDB_IOERROR;
                 goto done;
         }
 
@@ -433,6 +436,7 @@ static int zs_write_key_val_record(struct zsdb_priv *priv,
         if (ret) {
                 /* TODO: try again before giving up */
                 fprintf(stderr, "Error flushing data to disk.\n");
+                ret = SDB_IOERROR;
                 goto done;
         }
 

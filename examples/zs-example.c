@@ -29,7 +29,9 @@ int main(int argc __attribute__((unused)), char **argv __attribute__((unused)))
                 goto quit;
         }
 
-        if (skiplistdb_add(db, "FOO", strlen("FOO"), "BAR", strlen("BAR"), &tid) != SDB_OK) {
+        if (skiplistdb_add(db, (unsigned char *)"FOO", strlen("FOO"),
+                           (unsigned char *)"BAR", strlen("BAR"),
+                           &tid) != SDB_OK) {
                 fprintf(stderr, "Cannot add keyval to %s\n", DBFNAME);
                 ret = EXIT_FAILURE;
                 goto fail;
