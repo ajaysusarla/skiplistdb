@@ -25,6 +25,14 @@ else
 endif
 export E Q QCC QLD QIN QMKDIR QAR
 
+ENDIANESS=$(shell printf '\1' | od -dAn)
+
+ifeq ($(strip $(ENDIANESS)),1)
+	ENDIAN = -DLENDIAN
+else
+	ENDIAN = -DBENDIAN
+endif
+
 ## Defaults
 NULL=
 PREFIX?=/usr/local
@@ -41,7 +49,7 @@ SDB_MKDIR=$(QMKDIR)mkdir -p
 SDB_AR=$(QAR)ar
 
 # Compiler options
-SDB_CFLAGS=-std=c99 -pedantic -Wall -W -Wno-missing-field-initializers -O0 $(CFLAGS) $(DEBUG)
+SDB_CFLAGS=-std=c99 -pedantic -Wall -W -Wno-missing-field-initializers -O0 $(CFLAGS) $(DEBUG) $(ENDIAN)
 SDB_LDFLAGS=$(LDFLAGS) $(DEBUG)
 SDB_LIBS=
 DEBUG=-g -ggdb
