@@ -59,7 +59,7 @@ inline size_t off_to_size_t(off_t len)
 
 #if BYTE_ORDER == LITTLE_ENDIAN
 
-static __inline uint64_t hton64(uint64_t num)
+static inline uint64_t hton64(uint64_t num)
 {
         register uint32_t u, l;
         u = num >> 32;
