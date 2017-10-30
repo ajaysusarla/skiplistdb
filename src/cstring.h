@@ -13,8 +13,10 @@
 #ifndef _CSTRING_H_
 #define _CSTRING_H_
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "macros.h"
 
@@ -55,7 +57,60 @@ char *cstring_detach(cstring *cstr, size_t *len);
  */
 void cstring_attach(cstring *cstr, void *buf, size_t len, size_t alloc);
 
+/* cstring_grow():
+ * Increase the cstring buffer size allocated length by `len`.
+ */
 void cstring_grow(cstring *cstr, size_t len);
+
+/* cstring_available() :
+ * Returns the available space in the cstring buffer.
+ */
+static inline size_t cstring_available(const cstring *cstr)
+{
+        return cstr->alloc ? cstr->alloc - cstr->len - 1 : 0;
+}
+
+/* cstring_setlen()
+ * Set the length of the cstring buffer to the new value.
+ * This function does not allocate new memory.
+ */
+static inline void cstring_setlen(cstring *cstr, size_t len)
+{
+        if (len > (cstr->alloc ? cstr->alloc -1 : 0)) {
+                fprintf(stderr, "Cannot set length beyond buffer size\n");
+                exit(EXIT_FAILURE);
+        }
+        cstr->len = len;
+        if (cstr->buf != cstring_base)
+                cstr->buf[len] = '\0';
+        else
+                assert(!cstring_base[0]);
+}
+/* cstring_addch():
+ * Add a single character to a cstring
+ */
+static inline void cstring_addch(cstring *cstr, int ch)
+{
+        if (!cstring_available(cstr))
+                cstring_grow(cstr, 1);
+        cstr->buf[cstr->len++] = ch;
+        cstr->buf[cstr->len] = '\0';
+}
+
+/* cstring_add():
+ * Add data of a given length to the cstring buffer.
+ *
+ */
+void cstring_add(cstring *cstr, void *data, size_t len);
+
+/*
+ * cstring_addstr():
+ * Add a NULL terminated string to the cstring buffer
+ */
+static inline void cstring_addstr(cstring *cstr, char *str)
+{
+        cstring_add(cstr, str, strlen(str));
+}
 
 CPP_GUARD_END
 

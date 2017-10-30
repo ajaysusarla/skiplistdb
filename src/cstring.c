@@ -72,3 +72,10 @@ void cstring_attach(cstring *cstr, void *buf, size_t len, size_t alloc)
         cstring_grow(cstr, 0);
         cstr->buf[cstr->len] = '\0';
 }
+
+void cstring_add(cstring *cstr, void *data, size_t len)
+{
+        cstring_grow(cstr, len);
+        memcpy(cstr->buf + cstr->len, data, len);
+        cstring_setlen(cstr, cstr->len + len);
+}
