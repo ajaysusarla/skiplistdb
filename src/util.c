@@ -91,6 +91,30 @@ void xfree(void *ptr)
 }
 
 /*
+  xmkdir(): creates a directory if it doesn't exist.
+  returns 0 on success, -1 otherwise. Check errno for
+  the exact nature of the error.
+ */
+int xmkdir(const char *path, mode_t mode)
+{
+        int ret, err;
+        struct stat sb = {0};
+
+        return mkdir(path, mode);
+        ret = stat(path, &sb);
+        err = errno;
+        if (ret == -1) {        /* The directory doesn't exist, create */
+                return mkdir(path, mode);
+        }
+
+        /* A directory/file exists in that path.
+         */
+        errno = EEXIST;
+
+        return -1;
+}
+
+/*
   file_change_mode_rw():
   returns 0 if mode changed successfully, -1 otherwise.
  */
