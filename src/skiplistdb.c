@@ -73,10 +73,18 @@ static void skiplistdb_free(struct skiplistdb *db)
 /*
  * Exported functions
  */
-int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags)
+int skiplistdb_init(DBType type, struct skiplistdb **db, struct txn **tid)
 {
-        if (db && db->op && db->op->init)
-                return db->op->init(db, dbdir, flags);
+        struct skiplistdb *_db = NULL;
+
+        if (!*db) {
+                _db = skiplistdb_new(type);
+                _db->allocated = 1;
+                *db = _db;
+        }
+
+        if (_db->op && _db->op->init)
+                return _db->op->init(type, db, tid);
         else
                 return SDB_NOTIMPLEMENTED;
 }
@@ -89,19 +97,18 @@ int skiplistdb_final(struct skiplistdb *db)
                 return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_open(const char *fname, int flags, DBType type,
-                    struct skiplistdb **db, struct txn **tid)
+int skiplistdb_open(const char *dbdir, struct skiplistdb *db, int flags, struct txn **tid)
 {
         struct skiplistdb *_db = NULL;
 
-        if (!*db) {
-                _db = skiplistdb_new(type);
-                _db->allocated = 1;
-                *db = _db;
-        }
+        if (!db)
+                return SDB_ERROR;
+
+        if (!db->initialised)
+                return SDB_ERROR;
 
         if (_db->op && _db->op->open)
-                return _db->op->open(fname, flags, db, tid);
+                return _db->op->open(dbdir, db, flags, tid);
         else
                 return SDB_NOTIMPLEMENTED;
 }

@@ -135,7 +135,8 @@ struct tsdb_list {
 };
 
 
-static int ts_init(struct skiplistdb *db, const char *dbdir, int flags)
+static int ts_init(const char *dbdir, DBType type,
+                    struct skiplistdb **db, struct txn **tid)
 {
         return SDB_NOTIMPLEMENTED;
 }
@@ -320,7 +321,7 @@ static const struct skiplistdb_operations twoskip_ops = {
 };
 
 
-struct skiplistdb * twoskip_new(void)
+struct skiplistdb * twoskip_new(const char *path __attribute__((unused)))
 {
         struct skiplistdb *db = NULL;
         struct tsdb_priv *priv = NULL;

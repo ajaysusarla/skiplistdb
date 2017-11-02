@@ -17,7 +17,7 @@
 
 CPP_GUARD_START
 
-struct skiplistdb * twoskip_new(void);
+struct skiplistdb * twoskip_new(const char *path);
 void twoskip_free(struct skiplistdb *db);
 
 CPP_GUARD_END

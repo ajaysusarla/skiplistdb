@@ -73,9 +73,10 @@ typedef int foreach_cb(void *rock,
  * The interface for the skiplist database backend
  */
 struct skiplistdb_operations {
-        int (*init)(struct skiplistdb *db, const char *dbdir, int flags);
+        int (*init)(DBType type, struct skiplistdb **db, struct txn **tid);
         int (*final)(struct skiplistdb *db);
-        int (*open)(const char *fname, int flags, struct skiplistdb **db, struct txn **tid);
+        int (*open)(const char *dbdir, struct skiplistdb *db, int flags,
+                    struct txn **tid);
         int (*close)(struct skiplistdb *db);
         int (*sync)(struct skiplistdb *db);
         int (*archive)(struct skiplistdb *db, const struct str_array *fnames, const char *dirname);
@@ -111,15 +112,16 @@ struct skiplistdb {
         DBType type;
         const struct skiplistdb_operations *op;
         unsigned int allocated:1;
+        unsigned int initialised:1;
         void *priv;
 };
 const struct skiplistdb_operations base_ops;
 #define SKIPLISTDB_INIT {NULL, INVALID_DB, &base_ops, 0, NULL }
 
-int skiplistdb_init(struct skiplistdb *db, const char *dbdir, int flags);
+int skiplistdb_init(DBType type, struct skiplistdb **db, struct txn **tid);
 int skiplistdb_final(struct skiplistdb *db);
-int skiplistdb_open(const char *fname, int flags, DBType type,
-                    struct skiplistdb **db, struct txn **tid);
+int skiplistdb_open(const char *dbdir, struct skiplistdb *db,
+                    int flags, struct txn **tid);
 int skiplistdb_close(struct skiplistdb *db);
 int skiplistdb_sync(struct skiplistdb *db);
 int skiplistdb_archive(struct skiplistdb *db, const struct str_array *fnames,

@@ -30,7 +30,7 @@ struct _cstring {
 
 typedef struct _cstring cstring;
 extern char cstring_base[];
-#define CSTRING_INIT {0, 0, cstring_base};
+#define CSTRING_INIT { .len = 0, .alloc = 0, .buf = cstring_base }
 
 /* cstring_init():
  * Initialise the cstring structure.
@@ -107,10 +107,16 @@ void cstring_add(cstring *cstr, void *data, size_t len);
  * cstring_addstr():
  * Add a NULL terminated string to the cstring buffer
  */
-static inline void cstring_addstr(cstring *cstr, char *str)
+static inline void cstring_addstr(cstring *cstr, const char *str)
 {
-        cstring_add(cstr, str, strlen(str));
+        cstring_add(cstr, (void *)str, strlen(str));
 }
+
+/*
+ * cstring_dup():
+ * Copy the contents of on cstring buffer to another
+ */
+void cstring_dup(cstring *src, cstring *dest);
 
 CPP_GUARD_END
 

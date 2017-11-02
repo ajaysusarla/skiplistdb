@@ -79,3 +79,10 @@ void cstring_add(cstring *cstr, void *data, size_t len)
         memcpy(cstr->buf + cstr->len, data, len);
         cstring_setlen(cstr, cstr->len + len);
 }
+
+void cstring_dup(cstring *src, cstring *dest)
+{
+        cstring_grow(dest ,src->len);
+        memcpy(dest->buf + dest->len, src->buf, src->len);
+        cstring_setlen(dest, dest->len + src->len);
+}

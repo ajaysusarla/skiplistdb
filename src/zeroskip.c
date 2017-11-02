@@ -10,20 +10,35 @@
 #include "util.h"
 #include "zeroskip.h"
 #include "mappedfile.h"
+#include "cstring.h"
 
 #include <arpa/inet.h>
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/param.h>          /* For MAXPATHLEN */
+#include <unistd.h>
 #include <uuid/uuid.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 
 #define ALIGN64(x) (((x) + 7ULL) & ~7ULL)
 #define VALID64(x) (((x) & 7ULL) == 0ULL)
 
+/*
+ * Zeroskip db files have the following file naming scheme:
+ *   zeroskip-$(UUID)-$(index)                     - for an unpacked file
+ *   zeroskip-$(UUID)-$(startindex)-$(endindex)    - for a packed filed
+ *
+ * The UUID, startindex and endindex values are in the header of each file.
+ * The index starts with a 0, for a completely new Zeroskip DB. And is
+ * incremented every time a file is finalized(packed).
+ */
+#define ZS_FNAME_PREFIX "zeroskip-"
 
 /*
- *  Zero skip on-disk file format:
+ *  Zeroskip on-disk file format:
  *
  *  [Header]([Key|Value]+[Commit])+[Pointers][Commit]
  */
@@ -53,6 +68,21 @@ struct zs_header {
 #define ZS_HDR_SIGNATURE 0x5a45524f534b4950 /* "ZEROSKIP" */
 #define ZS_HDR_VERSION   1
 #define ZS_HDR_SIZE      40
+
+/*
+ * Every Zeroskip DB folder will have .zsdb file with the
+ * following metadata.
+ * Most(or all) of the data in this structure can be reconstructed,
+ * if this file is accidentally deleted or lost.
+ */
+struct dotzsdb {
+        uint64_t signature;     /* Signature */
+        char uuidstr[37];       /* Unparsed UUID string */
+        uint8_t padding1[3];
+        uint32_t curindex;      /* Current index */
+        uint32_t padding2;
+};
+#define DOTZSDB_SIZE   56
 
 /**
  * The zeroskip record[key|value|commit]
@@ -156,8 +186,15 @@ struct txn {
 struct zsdb_priv {
         struct mappedfile *mf;
         struct zs_header header;
+        struct dotzsdb dothdr;
+
+        cstring dbdir;
+        cstring dbfname;
+        cstring dotzsdbfname;
 
         unsigned int is_open:1;
+        unsigned int valid:1;
+
         size_t end;
 };
 
@@ -296,7 +333,7 @@ static int prepare_short_key(struct zs_rec *keyrec, unsigned char **bufp)
 {
         int ret = SDB_OK;
         uint16_t length;
-        unsigned char *val_loc;
+        uint64_t val_loc;
 
         /* type */
         memcpy(*bufp, &keyrec->type, sizeof(keyrec->type));
@@ -308,8 +345,9 @@ static int prepare_short_key(struct zs_rec *keyrec, unsigned char **bufp)
         *bufp += sizeof(length);
 
         /* pointer to the value */
-        val_loc = *bufp + keyrec->rec.skey.length;
-        memcpy(*bufp, val_loc, sizeof(val_loc));
+        /* TODO: Copy on 40 bits */
+        val_loc = hton64((uint64_t)*bufp + keyrec->rec.skey.length);
+        memcpy(*bufp, &val_loc, sizeof(val_loc));
         *bufp += sizeof(val_loc);
 
         /* key data */
@@ -323,7 +361,7 @@ static int prepare_long_key(struct zs_rec *keyrec, unsigned char **bufp)
 {
         int ret = SDB_OK;
         uint64_t length;
-        unsigned char *val_loc;
+        uint64_t val_loc;
 
         /* type */
         memcpy(*bufp, &keyrec->type, sizeof(keyrec->type));
@@ -335,8 +373,8 @@ static int prepare_long_key(struct zs_rec *keyrec, unsigned char **bufp)
         *bufp += sizeof(length);
 
         /* pointer to the value */
-        val_loc = *bufp + keyrec->rec.lkey.length;
-        memcpy(*bufp, val_loc, sizeof(val_loc));
+        val_loc = hton64((uint64_t)*bufp + keyrec->rec.lkey.length);
+        memcpy(*bufp, &val_loc, sizeof(val_loc));
         *bufp += sizeof(val_loc);
 
         /* key data */
@@ -444,9 +482,128 @@ done:
         return ret;
 }
 
-static int zs_init(struct skiplistdb *db, const char *dbdir, int flags)
+static int is_zsdb_dir(struct zsdb_priv *priv)
 {
-        return SDB_NOTIMPLEMENTED;
+        return 0;
+}
+
+/*
+ * This function assumes the caller sanitises the input.
+ *
+ * The .zsdb file in a DB directory has the following structure:
+ *      ZSDB Signature  -  64 bits
+ *      Parsed uuid str - 296 bits
+ *      Current index   -  32 bits
+ */
+static int create_dot_zsdb(struct zsdb_priv *priv)
+{
+        size_t stackbufsize = 45; /* signature(8) + uuid(37) */
+        unsigned char stackbuf[stackbufsize];
+        uint64_t signature;         /* Signature */
+        char uuidstr[37];
+        unsigned char *sptr;
+        struct mappedfile *mf;
+        int ret = SDB_OK;
+        size_t nbytes = 0;
+
+        memset(&stackbuf, 0, stackbufsize);
+        sptr = scratch;
+
+        /* The filename */
+        cstring_dup(&priv->dbdir, &priv->dotzsdbfname);
+        cstring_addstr(&priv->dotzsdbfname, ".zsdb");
+
+        /* Header */
+        signature = ZS_HDR_SIGNATURE;
+        priv->dothdr.signature - ZS_HDR_SIGNATURE;
+        memcpy(sptr, &signature, sizeof(uint64_t));
+        sptr += sizeof(uint64_t);
+
+        /* UUID */
+        uuid_unparse_lower(priv->header.uuid, uuidstr);
+        memcpy(priv->dothdr.uuidstr, &uuidstr, sizeof(uuidstr));
+        memcpy(sptr, &uuidstr, sizeof(uuidstr));
+        sptr += sizeof(uuidstr);
+
+        /* Index */
+        priv->dothdr.curindex = 0;
+        memcpy(sptr, &priv->dothdr.curindex, sizeof(uint32_t));
+
+        /* Write to file */
+        if (mappedfile_open(priv->dotzsdbfname.buf, MAPPEDFILE_RW_CR, &mf) != 0) {
+                fprintf(stderr, "Could not create %s!", priv->dotzsdbfname.buf);
+                ret = SDB_ERROR;
+                goto fail1;
+        }
+
+        if (mappedfile_write(&mf, &stackbuf, stackbufsize, &nbytes) != 0) {
+                fprintf(stderr, "Could not write to file %s!",
+                        priv->dotzsdbfname.buf);
+                ret = SDB_ERROR;
+                goto fail2;
+        }
+
+        mappedfile_flush(&mf);
+
+fail2:
+        mappedfile_close(&mf);
+
+fail1:
+        return ret;
+}
+
+/*
+ * validate_dot_zsdb():
+ * Checks a the .zsdb file in a given dbdir and ensures that it is
+ * valid.
+ * Returns 1 if it is valid and 0 otherwise.
+ */
+static int validate_dot_zsdb(struct zsdb_priv *priv)
+{
+        struct mappedfile *mf;
+        size_t mfsize;
+        struct dotzsdb *dothdr;
+
+        /* Set the filename */
+        if (priv->dotzsdbfname.buf == cstring_base) {
+                cstring_dup(&priv->dbdir, &priv->dotzsdbfname);
+                cstring_addstr(&priv->dotzsdbfname, ".zsdb");
+        }
+
+        if (mappedfile_open(priv->dotzsdbfname.buf, MAPPEDFILE_RD, &mf) != 0) {
+                fprintf(stderr, "Could not open %s!", priv->dotzsdbfname.buf);
+                return 0;
+        }
+
+        mappedfile_size(&mf, &mfsize);
+
+        if (mfsize < DOTZSDB_SIZE) {
+                fprintf(stderr, "File too small to be zeroskip DB.\n");
+                return 0;
+        }
+
+        dothdr = (struct dotzsdb *)mf->ptr;
+        if (dothdr->signature == ZS_HDR_SIGNATURE) {
+        }
+
+
+        mappedfile_close(&mf);
+
+        return 1;
+}
+
+static int zs_init(DBType type, struct skiplistdb **db, struct txn **tid)
+{
+        struct zsdb_priv *priv;
+
+        assert(db);
+        assert(*db);
+
+        priv = (*db)->priv;
+
+        (*db)->initialised = 1;
+
+        return SDB_OK;
 }
 
 static int zs_final(struct skiplistdb *db)
@@ -454,8 +611,112 @@ static int zs_final(struct skiplistdb *db)
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_open(const char *fname, int flags,
-                   struct skiplistdb **db, struct txn **tid)
+/*
+ * setup_db_dir()
+ */
+static int setup_db_dir(const char *dbdir, struct skiplistdb *db)
+{
+        struct zsdb_priv *priv;
+        mode_t mode = 0777;
+        struct stat sb = {0};
+        int ret = SDB_OK;
+        cstring strinit = CSTRING_INIT;
+        char uuidstr[37];
+
+        priv = db->priv;
+        priv->dbdir = strinit;
+        priv->dbfname = strinit;
+        priv->dotzsdbfname = strinit;
+
+        if (stat(dbdir, &sb) == -1) { /* New Zeroskip DB */
+                /* If the directory doesn't exist, we creat a directory with the
+                 * uuid as the name.
+                 */
+
+                /* Setup default header values */
+                priv->header.signature = ZS_HDR_SIGNATURE;
+                priv->header.version = ZS_HDR_VERSION;
+
+                /* Generate a new uuid */
+                uuid_generate(priv->header.uuid);
+                uuid_unparse_lower(priv->header.uuid, uuidstr);
+
+                /* Set the start and end indeces in the header.
+                 * These would already be 0 since we xcalloc'd priv, but just
+                 * doing the right thing.
+                 */
+                priv->header.startidx = 0;
+                priv->header.endidx = 0;
+
+                /* If there is no `dbdir` specified, we create the db in the
+                 * current directory.
+                 */
+                if (dbdir && dbdir[0]) {
+                        cstring_addstr(&priv->dbdir, dbdir);
+                        cstring_addstr(&priv->dbdir, uuidstr);
+                } else {
+                        char cwd[MAXPATHLEN];
+                        if (getcwd(cwd, MAXPATHLEN)) {
+                                cstring_addstr(&priv->dbdir, cwd);
+                                cstring_addstr(&priv->dbdir, uuidstr);
+                        } else {
+                                perror("getcwd:");
+                        }
+                }
+
+                /* Create the dbdir */
+                if (xmkdir(priv->dbdir.buf, mode) != 0) {
+                        perror("zs_init:");
+                        return SDB_ERROR;
+                }
+
+                /* Create the .zsdb file */
+                if (create_dot_zsdb(priv) != SDB_OK) {
+                        fprintf(stderr, "Could not initialise DB %s",
+                                priv->dbdir.buf);
+                        return SDB_ERROR;
+                }
+
+                /* Stat again to make sure that the directory got created */
+                if (stat(priv->dbdir.buf, &sb) == -1) {
+                        /* If the directory isn't created, we have serious issues
+                         * with the hardware.
+                         */
+                        fprintf(stderr, "Could not create Zeroskip DB %s",
+                                priv->dbdir.buf);
+                        return SDB_ERROR; /* Abort? */
+                }
+        } else if (S_ISDIR(sb.st_mode)) {
+                /* This could be a valid Zeroskip db. We check to see if
+                * there is a .zsdb file and that it has some meaningful content
+                */
+        } else {
+        }
+
+        if (priv->dbdir.buf == strinit.buf) {
+                cstring_addstr(&priv->dbdir, dbdir);
+        }
+
+        /* Ensure what exists is a valid zeroskip db directory */
+        if (S_ISDIR(sb.st_mode) &&
+            is_zsdb_dir(priv) &&
+            validate_dot_zsdb(priv)) {
+                /* `dbfname` has the name of the file we need to map */
+                cstring_addstr(&priv->dbfname, ZS_FNAME_PREFIX);
+                cstring_addstr(&priv->dbfname, uuidstr);
+                cstring_addch(&priv->dbfname, '-');
+                // TODO: cstring_addstr(&priv->dbfname, index);
+                priv->valid = 1;
+        } else {
+                fprintf(stderr, "%s isn't a valid Zeroskip DB.\n",
+                        priv->dbdir.buf);
+                return SDB_ERROR;
+        }
+
+        return ret;
+}
+
+static int zs_open(const char *dbdir, struct skiplistdb *db, int flags, struct txn **tid)
 {
         int mappedfile_flags = MAPPEDFILE_RW;
         struct skiplistdb *tdb;
@@ -463,15 +724,30 @@ static int zs_open(const char *fname, int flags,
         int ret = SDB_OK;
         size_t mf_size;
 
-        assert(fname);
         assert(db);
-        assert((*db)->priv);
+        assert(db->priv);
 
-        priv = (struct zsdb_priv *)(*db)->priv;
+        if (db->allocated != 1 || db->initialised != 1) {
+                fprintf(stderr, "DB not intialised.\n");
+                return SDB_ERROR;
+        }
+
+        priv = (struct zsdb_priv *)db->priv;
+
+        if (priv->is_open == 1) {
+                fprintf(stderr, "DB opened already, returning!\n");
+                return ret;
+        }
 
         if (flags & SDB_CREATE)
                 mappedfile_flags |= MAPPEDFILE_CREATE;
 
+        if (setup_db_dir(dbdir, db) != SDB_OK) {
+                fprintf(stderr, "Could not setup zeroskip DB.\n");
+                ret = SDB_INVALID_DB;
+        }
+
+#if 0
         ret = mappedfile_open(fname, mappedfile_flags, &priv->mf);
         if (ret) {
                 ret = SDB_IOERROR;
@@ -498,6 +774,7 @@ static int zs_open(const char *fname, int flags,
         }
 
         /* XXX: Verify if the DB is sane */
+#endif
 
 done:
         return ret;
@@ -590,12 +867,12 @@ static int zs_add(struct skiplistdb *db,
         if (keylen <= MAX_SHORT_KEY_LEN) {
                 keyrec.type = REC_TYPE_SHORT_KEY;
                 keyrec.rec.skey.length = keylen;
-                keyrec.rec.skey.ptr_to_val = NULL;
+                keyrec.rec.skey.ptr_to_val = 0;
                 keyrec.rec.skey.data = key;
         } else {
                 keyrec.type = REC_TYPE_LONG_KEY;
                 keyrec.rec.lkey.length = keylen;
-                keyrec.rec.lkey.ptr_to_val = NULL;
+                keyrec.rec.lkey.ptr_to_val = 0;
                 keyrec.rec.lkey.data = key;
         }
 
@@ -711,11 +988,6 @@ struct skiplistdb * zeroskip_new(void)
                 goto done;
         }
 
-        /* Setup default header values */
-        priv->header.signature = ZS_HDR_SIGNATURE;
-        priv->header.version = ZS_HDR_VERSION;
-
-
         db->priv = priv;
 done:
         return db;
@@ -725,7 +997,15 @@ done:
 void zeroskip_free(struct skiplistdb *db)
 {
         if (db && db->priv) {
-                xfree(db->priv);
+                struct zsdb_priv *priv = db->priv;
+
+                /* Free fields of struct zsdb_priv */
+                cstring_release(&priv->dbdir);
+                cstring_release(&priv->dbfname);
+                cstring_release(&priv->dotzsdbfname);
+
+                xfree(priv);
+
                 xfree(db);
         }
 

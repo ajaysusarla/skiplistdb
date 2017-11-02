@@ -23,6 +23,7 @@ ZEROSKIP_EXAMPLE=zs-example
 
 SKIPLISTDB_INC=../src
 ZS_LIBS+= -luuid
+TS_LIBS+= -luuid
 
 all: $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE)
 
@@ -35,10 +36,10 @@ Makefile.dep:
 	$(SDB_CC) -I$(SKIPLISTDB_INC) -c $<
 
 $(TWOSKIP_EXAMPLE): $(TS_OBJS)
-	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE)
+	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE) $(TS_LIBS)
 
 $(ZEROSKIP_EXAMPLE): $(ZS_OBJS)
-	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE)
+	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE) $(ZS_LIBS)
 
 clean:
 	$(SDB_RM) $(TS_OBJS) $(ZS_OBJS) $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE) \

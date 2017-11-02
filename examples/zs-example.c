@@ -23,7 +23,13 @@ int main(int argc __attribute__((unused)), char **argv __attribute__((unused)))
         struct txn *tid;
         int ret = EXIT_SUCCESS;
 
-        if (skiplistdb_open(DBFNAME, SDB_CREATE, ZERO_SKIP, &db, &tid) != SDB_OK) {
+        if (skiplistdb_init(ZERO_SKIP, &db, &tid) != SDB_OK) {
+                fprintf(stderr, "Cannot initilaise\n");
+                ret = EXIT_FAILURE;
+                goto quit;
+        }
+
+        if (skiplistdb_open(DBFNAME, db, SDB_CREATE, &tid) != SDB_OK) {
                 fprintf(stderr, "Cannot create db: %s\n", DBFNAME);
                 ret = EXIT_FAILURE;
                 goto quit;
