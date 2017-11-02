@@ -135,29 +135,32 @@ struct tsdb_list {
 };
 
 
-static int ts_init(const char *dbdir, DBType type,
-                    struct skiplistdb **db, struct txn **tid)
+static int ts_init(DBType type __attribute__((unused)),
+                   struct skiplistdb **db __attribute__((unused)),
+                   struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_final(struct skiplistdb *db)
+static int ts_final(struct skiplistdb *db __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_open(const char *fname, int flags,
-                   struct skiplistdb **db, struct txn **tid)
+static int ts_open(const char *fname __attribute__((unused)),
+                   struct skiplistdb *db __attribute__((unused)),
+                   int flags __attribute__((unused)),
+                   struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_close(struct skiplistdb *db)
+static int ts_close(struct skiplistdb *db __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_sync(struct skiplistdb *db)
+static int ts_sync(struct skiplistdb *db __attribute__((unused)))
 {
         if (db->op->sync)
                 return db->op->sync(db);
@@ -165,100 +168,125 @@ static int ts_sync(struct skiplistdb *db)
                 return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_archive(struct skiplistdb *db, const struct str_array *fnames,
-               const char *dirname)
+static int ts_archive(struct skiplistdb *db __attribute__((unused)),
+                      const struct str_array *fnames __attribute__((unused)),
+                      const char *dirname __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_unlink(struct skiplistdb *db, const char *fname, int flags)
+static int ts_unlink(struct skiplistdb *db __attribute__((unused)),
+                     const char *fname __attribute__((unused)),
+                     int flags __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_fetch(struct skiplistdb *db,
-             unsigned char *key, size_t keylen,
-             unsigned char **data, size_t *datalen,
-             struct txn **tid)
+static int ts_fetch(struct skiplistdb *db __attribute__((unused)),
+                    unsigned char *key __attribute__((unused)),
+                    size_t keylen __attribute__((unused)),
+                    unsigned char **data __attribute__((unused)),
+                    size_t *datalen __attribute__((unused)),
+                    struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_fetchlock(struct skiplistdb *db,
-                 unsigned char *key, size_t keylen,
-                 unsigned char **data, size_t *datalen,
-                 struct txn **tid)
+static int ts_fetchlock(struct skiplistdb *db __attribute__((unused)),
+                        unsigned char *key __attribute__((unused)),
+                        size_t keylen __attribute__((unused)),
+                        unsigned char **data __attribute__((unused)),
+                        size_t *datalen __attribute__((unused)),
+                        struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_fetchnext(struct skiplistdb *db,
-                 unsigned char *key, size_t keylen,
-                 unsigned char **foundkey, size_t *foundkeylen,
-                 unsigned char **data, size_t *datalen,
-                 struct txn **tid)
+static int ts_fetchnext(struct skiplistdb *db __attribute__((unused)),
+                        unsigned char *key __attribute__((unused)),
+                        size_t keylen __attribute__((unused)),
+                        unsigned char **foundkey __attribute__((unused)),
+                        size_t *foundkeylen __attribute__((unused)),
+                        unsigned char **data __attribute__((unused)),
+                        size_t *datalen __attribute__((unused)),
+                        struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_foreach(struct skiplistdb *db,
-               unsigned char *prefix, size_t prefixlen,
-               foreach_p *p, foreach_cb *cb, void *rock,
-               struct txn **tid)
+static int ts_foreach(struct skiplistdb *db __attribute__((unused)),
+                      unsigned char *prefix __attribute__((unused)),
+                      size_t prefixlen __attribute__((unused)),
+                      foreach_p *p __attribute__((unused)),
+                      foreach_cb *cb __attribute__((unused)),
+                      void *rock __attribute__((unused)),
+                      struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_add(struct skiplistdb *db,
-           unsigned char *key, size_t keylen,
-           unsigned char *data, size_t datalen,
-           struct txn **tid)
+static int ts_add(struct skiplistdb *db __attribute__((unused)),
+                  unsigned char *key __attribute__((unused)),
+                  size_t keylen __attribute__((unused)),
+                  unsigned char *data __attribute__((unused)),
+                  size_t datalen __attribute__((unused)),
+                  struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_remove(struct skiplistdb *db,
-              unsigned char *key, size_t keylen,
-              struct txn **tid, int force)
+static int ts_remove(struct skiplistdb *db __attribute__((unused)),
+                     unsigned char *key __attribute__((unused)),
+                     size_t keylen __attribute__((unused)),
+                     struct txn **tid __attribute__((unused)),
+                     int force __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_store(struct skiplistdb *db,
-             unsigned char *key, size_t keylen,
-             unsigned char *data, size_t datalen,
-             struct txn **tid)
+static int ts_store(struct skiplistdb *db __attribute__((unused)),
+                    unsigned char *key __attribute__((unused)),
+                    size_t keylen __attribute__((unused)),
+                    unsigned char *data __attribute__((unused)),
+                    size_t datalen __attribute__((unused)),
+                    struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_commit(struct skiplistdb *db, struct txn **tid)
+static int ts_commit(struct skiplistdb *db __attribute__((unused)),
+                     struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_abort(struct skiplistdb *db, struct txn **tid)
+static int ts_abort(struct skiplistdb *db __attribute__((unused)),
+                    struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_dump(struct skiplistdb *db, DBDumpLevel level)
+static int ts_dump(struct skiplistdb *db __attribute__((unused)),
+                   DBDumpLevel level __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_consistent(struct skiplistdb *db)
+static int ts_consistent(struct skiplistdb *db __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_repack(struct skiplistdb *db)
+static int ts_repack(struct skiplistdb *db __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_cmp(struct skiplistdb *db,
-           unsigned char *s1, int l1, unsigned char *s2, int l2)
+static int ts_cmp(struct skiplistdb *db __attribute__((unused)),
+                  unsigned char *s1 __attribute__((unused)),
+                  int l1 __attribute__((unused)),
+                  unsigned char *s2 __attribute__((unused)),
+                  int l2 __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }

@@ -803,46 +803,59 @@ static int zs_sync(struct skiplistdb *db)
                 return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_archive(struct skiplistdb *db, const struct str_array *fnames,
-               const char *dirname)
+static int zs_archive(struct skiplistdb *db __attribute__((unused)),
+                      const struct str_array *fnames __attribute__((unused)),
+                      const char *dirname __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_unlink(struct skiplistdb *db, const char *fname, int flags)
+static int zs_unlink(struct skiplistdb *db __attribute__((unused)),
+                     const char *fname __attribute__((unused)),
+                     int flags __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_fetch(struct skiplistdb *db,
-             unsigned char *key, size_t keylen,
-             unsigned  char **data, size_t *datalen,
-             struct txn **tid)
+static int zs_fetch(struct skiplistdb *db __attribute__((unused)),
+                    unsigned char *key __attribute__((unused)),
+                    size_t keylen __attribute__((unused)),
+                    unsigned  char **data __attribute__((unused)),
+                    size_t *datalen __attribute__((unused)),
+                    struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_fetchlock(struct skiplistdb *db,
-                 unsigned char *key, size_t keylen,
-                 unsigned char **data, size_t *datalen,
-                 struct txn **tid)
+static int zs_fetchlock(struct skiplistdb *db __attribute__((unused)),
+                        unsigned char *key __attribute__((unused)),
+                        size_t keylen __attribute__((unused)),
+                        unsigned char **data __attribute__((unused)),
+                        size_t *datalen __attribute__((unused)),
+                        struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_fetchnext(struct skiplistdb *db,
-                 unsigned char *key, size_t keylen,
-                 unsigned char **foundkey, size_t *foundkeylen,
-                 unsigned char **data, size_t *datalen,
-                 struct txn **tid)
+static int zs_fetchnext(struct skiplistdb *db __attribute__((unused)),
+                        unsigned char *key __attribute__((unused)),
+                        size_t keylen __attribute__((unused)),
+                        unsigned char **foundkey __attribute__((unused)),
+                        size_t *foundkeylen __attribute__((unused)),
+                        unsigned char **data __attribute__((unused)),
+                        size_t *datalen __attribute__((unused)),
+                        struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_foreach(struct skiplistdb *db,
-               unsigned char *prefix, size_t prefixlen,
-               foreach_p *p, foreach_cb *cb, void *rock,
-               struct txn **tid)
+static int zs_foreach(struct skiplistdb *db __attribute__((unused)),
+                      unsigned char *prefix __attribute__((unused)),
+                      size_t prefixlen __attribute__((unused)),
+                      foreach_p *p __attribute__((unused)),
+                      foreach_cb *cb __attribute__((unused)),
+                      void *rock __attribute__((unused)),
+                      struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
@@ -899,41 +912,49 @@ static int zs_remove(struct skiplistdb *db,
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_store(struct skiplistdb *db,
-             unsigned char *key, size_t keylen,
-             unsigned char *data, size_t datalen,
-             struct txn **tid)
+static int zs_store(struct skiplistdb *db __attribute__((unused)),
+                    unsigned char *key __attribute__((unused)),
+                    size_t keylen __attribute__((unused)),
+                    unsigned char *data __attribute__((unused)),
+                    size_t datalen __attribute__((unused)),
+                    struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_commit(struct skiplistdb *db, struct txn **tid)
+static int zs_commit(struct skiplistdb *db __attribute__((unused)),
+                     struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_abort(struct skiplistdb *db, struct txn **tid)
+static int zs_abort(struct skiplistdb *db __attribute__((unused)),
+                    struct txn **tid __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_dump(struct skiplistdb *db, DBDumpLevel level)
+static int zs_dump(struct skiplistdb *db __attribute__((unused)),
+                   DBDumpLevel level __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_consistent(struct skiplistdb *db)
+static int zs_consistent(struct skiplistdb *db __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_repack(struct skiplistdb *db)
+static int zs_repack(struct skiplistdb *db __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_cmp(struct skiplistdb *db,
-           unsigned char *s1, int l1, unsigned char *s2, int l2)
+static int zs_cmp(struct skiplistdb *db __attribute__((unused)),
+                  unsigned char *s1 __attribute__((unused)),
+                  int l1 __attribute__((unused)),
+                  unsigned char *s2 __attribute__((unused)),
+                  int l2 __attribute__((unused)))
 {
         return SDB_NOTIMPLEMENTED;
 }
