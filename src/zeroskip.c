@@ -79,10 +79,11 @@ struct dotzsdb {
         uint64_t signature;     /* Signature */
         char uuidstr[37];       /* Unparsed UUID string */
         uint8_t padding1[3];
-        uint32_t curindex;      /* Current index */
+        uint32_t curidx;        /* Current index */
         uint32_t padding2;
 };
 #define DOTZSDB_SIZE   56
+#define DOTZSDB_ONDISK_SIZE 49
 
 /**
  * The zeroskip record[key|value|commit]
@@ -531,8 +532,8 @@ static int create_dot_zsdb(struct zsdb_priv *priv)
         sptr += sizeof(uuidstr);
 
         /* Index */
-        priv->dothdr.curindex = 0;
-        memcpy(sptr, &priv->dothdr.curindex, sizeof(uint32_t));
+        priv->dothdr.curidx = 0;
+        memcpy(sptr, &priv->dothdr.curidx, sizeof(uint32_t));
 
         /* Write to file */
         if (mappedfile_open(priv->dotzsdbfname.buf, MAPPEDFILE_RW_CR, &mf) != 0) {
@@ -573,7 +574,7 @@ static int validate_dot_zsdb(struct zsdb_priv *priv)
         /* Set the filename */
         if (priv->dotzsdbfname.buf == cstring_base) {
                 cstring_dup(&priv->dbdir, &priv->dotzsdbfname);
-                cstring_addch(&priv->dbdir, '/');
+                cstring_addch(&priv->dotzsdbfname, '/');
                 cstring_addstr(&priv->dotzsdbfname, ".zsdb");
         }
 
@@ -586,17 +587,26 @@ static int validate_dot_zsdb(struct zsdb_priv *priv)
         mappedfile_size(&mf, &mfsize);
 
         if (mfsize < DOTZSDB_SIZE) {
-                fprintf(stderr, "File too small to be zeroskip DB.\n");
+                fprintf(stderr, "File too small to be zeroskip DB: %zu.\n", mfsize);
+                /* TODO: Uncomment this later.
                 ret = 0;
                 goto fail2;
+                */
         }
 
         dothdr = (struct dotzsdb *)mf->ptr;
         if (dothdr->signature == ZS_HDR_SIGNATURE) {
-                memcpy(&priv->dothdr.signature, mf->ptr, ZS_HDR_SIZE);
-                memcpy(&priv->dothdr.uuidstr, mf->ptr + ZS_HDR_SIZE, sizeof(priv->dothdr.uuidstr));
+                memcpy(&priv->dothdr.signature, mf->ptr,
+                       sizeof(priv->dothdr.signature));
+
+                memcpy(&priv->dothdr.uuidstr,
+                       mf->ptr + sizeof(priv->dothdr.signature),
+                       sizeof(priv->dothdr.uuidstr));
                 uuid_parse(priv->dothdr.uuidstr, priv->header.uuid);
 
+                memcpy(&priv->dothdr.curidx,
+                       mf->ptr + sizeof(priv->dothdr.signature) + sizeof(priv->dothdr.uuidstr),
+                       sizeof(priv->dothdr.curidx));
         } else {
                 fprintf(stderr, "Invalid zeroskip DB %s.\n",
                         priv->dotzsdbfname.buf);
@@ -678,13 +688,17 @@ static int init_db_dir(struct skiplistdb *db)
 
         } else if (S_ISDIR(sb.st_mode) && validate_dot_zsdb(priv)) {
                 char uuidstr[37];
+                char index[11];
 
                 uuid_unparse_lower(priv->header.uuid, uuidstr);
+                snprintf(index, 20, "%d", priv->dothdr.curidx);
 
                 cstring_addstr(&priv->mappedfilename, ZS_FNAME_PREFIX);
                 cstring_addstr(&priv->mappedfilename, uuidstr);
                 cstring_addch(&priv->mappedfilename, '-');
-                // TODO: cstring_addstr(&priv->mappedfilename, indix);
+                cstring_addstr(&priv->mappedfilename, index);
+                fprintf(stderr, "Valid zeroskip db. Looking for file: %s\n",
+                        priv->mappedfilename.buf);
                 priv->valid = 1;
         } else {
                 fprintf(stderr, "%s isn't a valid Zeroskip DB.\n",
