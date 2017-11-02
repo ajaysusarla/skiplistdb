@@ -7,11 +7,14 @@
  */
 
 #include <getopt.h>
+#include <sys/param.h>          /* For MAXPATHLEN */
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "cmds.h"
 #include "skiplistdb.h"
+#include "cstring.h"
 
 int cmd_new(int argc, char **argv, const char *progname)
 {
@@ -24,9 +27,9 @@ int cmd_new(int argc, char **argv, const char *progname)
         int option;
         int option_index;
         const char *config_file = NULL;
-        struct skiplistdb *db;
-        const char *fname;
-        DBDumpLevel level;
+        struct skiplistdb *db = NULL;
+        struct txn *tid = NULL;
+        char *fname;
         DBType type;
 
         while((option = getopt_long(argc, argv, "t", long_options, &option_index)) != -1) {
@@ -50,9 +53,32 @@ int cmd_new(int argc, char **argv, const char *progname)
 
         fname = argv[optind];
 
-        fprintf(stderr, "Creating db: %s\n", fname);
-
         cmd_parse_config(config_file);
+
+        if (skiplistdb_init(type, &db, &tid) != SDB_OK) {
+                fprintf(stderr, "Failed initialising.\n");
+                exit(EXIT_FAILURE);
+        }
+
+        if (skiplistdb_open(fname, db, SDB_CREATE, &tid) != SDB_OK) {
+                fprintf(stderr, "Could not create skiplist DB.\n");
+                goto fail1;
+        }
+
+        if (skiplistdb_close(db) != SDB_OK) {
+                fprintf(stderr, "Could not close skiplist DB.\n");
+                goto fail1;
+        }
+
+fail1:
+        if (skiplistdb_final(db) != SDB_OK) {
+                fprintf(stderr, "Failed destroying the database instance.\n");
+                exit(EXIT_FAILURE);
+        }
+
+        printf("Created %s db %s.\n",
+               (type == ZERO_SKIP) ? "zeroskip" : "twoskip",
+               fname);
 
         exit(EXIT_SUCCESS);
 }

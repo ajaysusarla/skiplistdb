@@ -120,8 +120,8 @@ const struct skiplistdb_operations base_ops;
 
 int skiplistdb_init(DBType type, struct skiplistdb **db, struct txn **tid);
 int skiplistdb_final(struct skiplistdb *db);
-int skiplistdb_open(const char *dbdir, struct skiplistdb *db,
-                    int flags, struct txn **tid);
+int skiplistdb_open(const char *dbdir, struct skiplistdb *db, int flags,
+                    struct txn **tid);
 int skiplistdb_close(struct skiplistdb *db);
 int skiplistdb_sync(struct skiplistdb *db);
 int skiplistdb_archive(struct skiplistdb *db, const struct str_array *fnames,

@@ -147,7 +147,7 @@ static int ts_final(struct skiplistdb *db __attribute__((unused)))
         return SDB_NOTIMPLEMENTED;
 }
 
-static int ts_open(const char *fname __attribute__((unused)),
+static int ts_open(const char *dbdir __attribute__((unused)),
                    struct skiplistdb *db __attribute__((unused)),
                    int flags __attribute__((unused)),
                    struct txn **tid __attribute__((unused)))

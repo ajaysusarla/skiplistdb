@@ -111,7 +111,7 @@ int xmkdir(const char *path, mode_t mode)
          */
         errno = EEXIST;
 
-        return -1;
+        return errno;
 }
 
 /*

@@ -42,7 +42,7 @@ int cmd_batch(int argc, char **argv, const char *progname);
 #define cmd_batch_usage "batch "
 
 int cmd_new(int argc, char **argv, const char *progname);
-#define cmd_new_usage "new [--config CONFIGFILE] --dbtype=zeroskip|twoskip DBFILENAME"
+#define cmd_new_usage "new [--config CONFIGFILE] --dbtype=zeroskip|twoskip DBNAME"
 
 void cmd_die_usage(const char *progname, const char *usage);
 

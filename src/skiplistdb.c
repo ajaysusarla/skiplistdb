@@ -97,18 +97,17 @@ int skiplistdb_final(struct skiplistdb *db)
                 return SDB_NOTIMPLEMENTED;
 }
 
-int skiplistdb_open(const char *dbdir, struct skiplistdb *db, int flags, struct txn **tid)
+int skiplistdb_open(const char *dbdir, struct skiplistdb *db, int flags,
+                    struct txn **tid)
 {
-        struct skiplistdb *_db = NULL;
-
         if (!db)
                 return SDB_ERROR;
 
         if (!db->initialised)
                 return SDB_ERROR;
 
-        if (_db->op && _db->op->open)
-                return _db->op->open(dbdir, db, flags, tid);
+        if (db->op && db->op->open)
+                return db->op->open(dbdir, db, flags, tid);
         else
                 return SDB_NOTIMPLEMENTED;
 }
