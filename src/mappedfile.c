@@ -256,6 +256,9 @@ int mappedfile_write_iov(struct mappedfile **mfp, const struct iovec *iov,
         unsigned int i;
         size_t total_bytes = 0;
 
+        if (!mf)
+            return EINVAL;
+
         if (mf == &mf_init || mf->ptr == MAP_FAILED)
                 return EINVAL;
 
@@ -319,6 +322,9 @@ int mappedfile_size(struct mappedfile **mfp, size_t *psize)
         struct stat stbuf;
         int err = 0;
 
+        if (!mf)
+            return EINVAL;
+
         if (mf == &mf_init || mf->ptr == MAP_FAILED)
                 return EINVAL;
 
@@ -372,6 +378,9 @@ int mappedfile_truncate(struct mappedfile **mfp, size_t len)
         struct mappedfile *mf = *mfp;
         int err = 0;
 
+        if (!mf)
+            return EINVAL;
+
         if (mf == &mf_init || mf->ptr == MAP_FAILED || mf->ptr == NULL)
                 return EINVAL;
 
@@ -408,6 +417,9 @@ int mappedfile_flush(struct mappedfile **mfp)
 {
         struct mappedfile *mf = *mfp;
 
+        if (!mf)
+            return EINVAL;
+
         if (mf == &mf_init || mf->ptr == MAP_FAILED || mf->ptr == NULL)
                 return EINVAL;
 
@@ -427,6 +439,9 @@ int mappedfile_flush(struct mappedfile **mfp)
 int mappedfile_seek(struct mappedfile **mfp, size_t offset, size_t *newoffset)
 {
         struct mappedfile *mf = *mfp;
+
+        if (!mf)
+            return EINVAL;
 
         if (mf == &mf_init || mf->ptr == MAP_FAILED || mf->ptr == NULL)
                 return EINVAL;

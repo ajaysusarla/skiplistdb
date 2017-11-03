@@ -21,7 +21,7 @@ int cmd_get(int argc, char **argv, const char *progname);
 #define cmd_get_usage "get "
 
 int cmd_set(int argc, char **argv, const char *progname);
-#define cmd_set_usage "set "
+#define cmd_set_usage "set [--config CONFIGFILE] --dbtype=zeroskip|twoskip DB <key> <value>"
 
 int cmd_delete(int argc, char **argv, const char *progname);
 #define cmd_delete_usage "delete "
@@ -42,7 +42,7 @@ int cmd_batch(int argc, char **argv, const char *progname);
 #define cmd_batch_usage "batch "
 
 int cmd_new(int argc, char **argv, const char *progname);
-#define cmd_new_usage "new [--config CONFIGFILE] --dbtype=zeroskip|twoskip DBNAME"
+#define cmd_new_usage "new [--config CONFIGFILE] --dbtype=zeroskip|twoskip DB"
 
 void cmd_die_usage(const char *progname, const char *usage);
 
