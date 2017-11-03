@@ -159,6 +159,9 @@ int mappedfile_read(struct mappedfile **mfp, void *obuf,
         struct mappedfile *mf = *mfp;
         size_t n = 0;
 
+        if (!mf)
+            return EINVAL;
+
         if (mf == &mf_init || mf->ptr == MAP_FAILED)
                 return EINVAL;
 
@@ -192,6 +195,9 @@ int mappedfile_write(struct mappedfile **mfp, void *ibuf, size_t ibufsize,
                      size_t *nbytes)
 {
         struct mappedfile *mf = *mfp;
+
+        if (!mf)
+            return EINVAL;
 
         if (mf == &mf_init || mf->ptr == MAP_FAILED)
                 return EINVAL;
