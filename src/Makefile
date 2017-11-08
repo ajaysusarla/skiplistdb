@@ -11,6 +11,7 @@ SDB_LIBOBJS =          	\
 	htable.o	\
 	skiplistdb.o	\
 	strarray.o	\
+	btree.o		\
 	$(NULL)
 
 # Headers
@@ -24,6 +25,7 @@ SDB_HDRS =           	\
 	htable.h	\
 	skiplistdb.h	\
 	strarray.h	\
+	btreee.h	\
 	$(NULL)
 
 all: clean-ar $(AR_LIB_FILE)
