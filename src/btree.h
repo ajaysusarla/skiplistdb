@@ -12,6 +12,8 @@
 #ifndef _BTREE_H_
 #define _BTREE_H_
 
+#include <stdio.h>
+#include <stdint.h>
 
 #define BTREE_MAX_ELEMENTS 10
 
@@ -33,11 +35,19 @@ struct btree_iter {
         uint32_t k;
 };
 
+typedef int (*btree_action_cb_t)(void *item, void *data);
+
 struct btree {
         struct btree_node *root;
+        size_t count;
+
+        btree_action_cb_t destroy;
+        void *destroy_cb_data;
 };
 
 struct btree *btree_new(void);
 void btree_free(struct btree **tree);
+int btree_insert(struct btree *tree, const void *elem);
+
 
 #endif  /* _BTREE_H_ */
