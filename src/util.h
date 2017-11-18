@@ -16,7 +16,12 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
+
+#ifdef LINUX
 #include <endian.h>
+#elif MACOSX
+#include <machine/endian.h>
+#endif
 
 #include "macros.h"
 

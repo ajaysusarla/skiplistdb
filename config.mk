@@ -9,6 +9,7 @@ RMCOLOUR="\033[31m"
 ARCOLOUR="\033[35m"
 ENDCOLOUR="\033[0m"
 
+## Verbosity
 V =
 ifeq ($(strip $(V)),)
 	E = @echo
@@ -25,6 +26,7 @@ else
 endif
 export E Q QCC QLD QIN QMKDIR QAR
 
+## Endianess
 ENDIANESS=$(shell printf '\1' | od -dAn)
 
 ifeq ($(strip $(ENDIANESS)),1)
@@ -48,8 +50,22 @@ SDB_RM=$(QRM)rm -rf
 SDB_MKDIR=$(QMKDIR)mkdir -p
 SDB_AR=$(QAR)ar
 
-# Compiler options
-SDB_CFLAGS=-std=c99 -pedantic -Wall -W -Wno-missing-field-initializers -O0 $(CFLAGS) $(DEBUG) $(ENDIAN)
+## Platform
+UNAME := $(shell $(CC) -dumpmachine 2>&1 | grep -E -o "linux|darwin")
+
+ifeq ($(UNAME), linux)
+OSFLAGS = -DLINUX
+DEBUG = -ggdb
+else ifeq ($(UNAME), darwin)
+OSFLAGS = -DMACOSX
+DEBUG = -g
+else ifeq ($(UNAME), solaris)
+OSFLAGS = -DSOLARIS
+DEBUG = -g
+endif
+
+## Compiler options
+SDB_CFLAGS=-std=c99 -pedantic -Wall -W -Wno-missing-field-initializers -O0 $(CFLAGS) $(DEBUG) $(ENDIAN) $(OSFLAGS)
 SDB_LDFLAGS=$(LDFLAGS) $(DEBUG)
 SDB_LIBS=
 DEBUG=-g -ggdb
