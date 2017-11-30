@@ -224,7 +224,7 @@ static int zs_write_header(struct zsdb_priv *priv)
         struct zs_header hdr;
         size_t nbytes;
 
-        hdr.signature = priv->header.signature;
+        hdr.signature = hton64(priv->header.signature);
         hdr.version = htonl(priv->header.version);
         memcpy(hdr.uuid, priv->header.uuid, sizeof(uuid_t));
         hdr.startidx = htonl(priv->header.startidx);
@@ -259,7 +259,6 @@ done:
  */
 static int check_zsdb_header(struct zsdb_priv *priv)
 {
-        int ret = SDB_OK;
         size_t mfsize;
         struct zs_header *hdr;
         uint32_t version;
@@ -274,22 +273,24 @@ static int check_zsdb_header(struct zsdb_priv *priv)
         }
 
         hdr = (struct zs_header *)priv->mf->ptr;
-        if (hdr->signature == ZS_HDR_SIGNATURE) {
-                version = ntohl(hdr->version);
 
-                if (version != 1) {
-                        fprintf(stderr, "Invalid zeroskip DB version.\n");
-                        return SDB_INVALID_DB;
-                }
+        if (hdr->signature != hton64(ZS_HDR_SIGNATURE)) {
+                fprintf(stderr, "Invalid Zeroskip DB!\n");
+                return SDB_INVALID_DB;
         }
+
+        version = ntohl(hdr->version);
 
         if (version == 1) {
                 fprintf(stderr, "Valid zeroskip DB file. Version: %d\n", version);
+        } else {
+                fprintf(stderr, "Invalid zeroskip DB version.\n");
+                return SDB_INVALID_DB;
         }
 
         /* XXX: Check crc32, Assign uuid, startidx and endidx */
 
-        return ret;
+        return SDB_OK;
 }
 
 static int zs_write_record(struct zsdb_priv *priv, enum record_t type,

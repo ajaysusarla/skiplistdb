@@ -63,7 +63,7 @@ int cmd_set(int argc, char **argv, const char *progname)
         }
 
         if (skiplistdb_open(fname, db, SDB_CREATE, &tid) != SDB_OK) {
-                fprintf(stderr, "Could not create skiplist DB.\n");
+                fprintf(stderr, "Could not open skiplist DB.\n");
                 goto fail1;
         }
 
@@ -79,15 +79,13 @@ int cmd_set(int argc, char **argv, const char *progname)
                 goto fail1;
         }
 
+        printf("Set %s to %s in %s\n",
+               key, value, fname);
 fail1:
         if (skiplistdb_final(db) != SDB_OK) {
                 fprintf(stderr, "Failed destroying the database instance.\n");
                 exit(EXIT_FAILURE);
         }
-
-        printf("Set %s to %s in %s\n",
-               key, value, fname);
-
 
         exit(EXIT_SUCCESS);
 }
