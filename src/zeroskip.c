@@ -796,6 +796,9 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
                 goto done;
         }
 
+        /* Seek to the end of the header, that's where the records start */
+        mappedfile_seek(&priv->mf, ZS_HDR_SIZE, NULL);
+
         /* XXX: Verify if the DB is sane */
 done:
         return ret;
@@ -905,6 +908,9 @@ static int zs_add(struct skiplistdb *db,
 
         priv = db->priv;
         assert(priv);
+
+        if (!priv->is_open)
+                return SDB_ERROR;
 
         /* Key */
         if (keylen <= MAX_SHORT_KEY_LEN) {

@@ -450,7 +450,8 @@ int mappedfile_seek(struct mappedfile **mfp, size_t offset, size_t *newoffset)
                 return ESPIPE;
 
         mf->offset = offset;
-        *newoffset = offset;
+        if (newoffset)
+                *newoffset = offset;
 
         return 0;
 }
