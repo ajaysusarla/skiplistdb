@@ -25,10 +25,11 @@ int cmd_dump(int argc, char **argv, const char *progname)
         int option;
         int option_index;
         const char *config_file = NULL;
-        struct skiplistdb *db;
+        struct skiplistdb *db = NULL;
+        struct txn *tid = NULL;
         const char *fname;
-        DBDumpLevel level;
-        DBType type;
+        DBDumpLevel level = DB_DUMP_ALL;
+        DBType type = ZERO_SKIP;
 
         while((option = getopt_long(argc, argv, "t", long_options, &option_index)) != -1) {
                 switch (option) {
@@ -57,6 +58,32 @@ int cmd_dump(int argc, char **argv, const char *progname)
         fprintf(stderr, "Opening db: %s\n", fname);
 
         cmd_parse_config(config_file);
+
+        if (skiplistdb_init(type, &db, &tid) != SDB_OK) {
+               fprintf(stderr, "Failed initialising.\n");
+               exit(EXIT_FAILURE);
+        }
+
+        if (skiplistdb_open(fname, db, SDB_CREATE, &tid) != SDB_OK) {
+                fprintf(stderr, "Could not open skiplist DB.\n");
+                goto fail1;
+        }
+
+        if (skiplistdb_dump(db, level) != SDB_OK) {
+                fprintf(stderr, "Cannot dump db %s\n", fname);
+                goto fail1;
+        }
+
+        if (skiplistdb_close(db) != SDB_OK) {
+                fprintf(stderr, "Could not close skiplist DB.\n");
+                goto fail1;
+        }
+
+fail1:
+        if (skiplistdb_final(db) != SDB_OK) {
+                fprintf(stderr, "Failed destroying the database instance.\n");
+                exit(EXIT_FAILURE);
+        }
 
         exit(EXIT_SUCCESS);
 }

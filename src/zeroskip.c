@@ -14,13 +14,14 @@
 
 #include <arpa/inet.h>
 #include <assert.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/param.h>          /* For MAXPATHLEN */
-#include <unistd.h>
-#include <uuid/uuid.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <uuid/uuid.h>
 
 
 #define ALIGN64(x) (((x) + 7ULL) & ~7ULL)
@@ -905,9 +906,9 @@ static int zs_add(struct skiplistdb *db,
         assert(db);
         assert(key);
         assert(data);
+        assert(db->priv);
 
         priv = db->priv;
-        assert(priv);
 
         if (!priv->is_open)
                 return SDB_ERROR;
@@ -973,7 +974,22 @@ static int zs_abort(struct skiplistdb *db __attribute__((unused)),
 static int zs_dump(struct skiplistdb *db __attribute__((unused)),
                    DBDumpLevel level __attribute__((unused)))
 {
-        return SDB_NOTIMPLEMENTED;
+        int ret = SDB_OK;
+        struct zsdb_priv *priv;
+
+        assert(db);
+        assert(db->priv);
+
+        priv = db->priv;
+
+        printf("Zeroskip HEADER:\n signature=0x%" PRIx64 "\n version=%u\n",
+               priv->header.signature,
+               priv->header.version);
+
+        if (!priv->is_open)
+                return SDB_ERROR;
+
+        return ret;
 }
 
 static int zs_consistent(struct skiplistdb *db __attribute__((unused)))
