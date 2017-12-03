@@ -64,9 +64,7 @@ struct btree_iter {
 typedef struct btree_iter btree_iter_t[1];
 
 /** Callbacks **/
-/* TODO: The first argument of btree_action_cb_t, is currently node,
- * but it needs to be node->record, where record should contain,
- * keys, keylens and vals. */
+/* btree_action_cb_t should return 1 for success, for the loop to continue */
 typedef int (*btree_action_cb_t)(struct record *record, void *data);
 typedef unsigned int (*btree_search_cb_t)(void *key, size_t keylen,
                                           struct record **recs,

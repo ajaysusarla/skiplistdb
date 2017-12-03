@@ -62,16 +62,14 @@ static void btree_node_free(struct btree_node *node, struct btree *btree)
 
         if (!node->depth) {
                 for (i = 0; i < count; i++) {
-                        btree->destroy((void *)node->keys[i],
+                        btree->destroy((void *)node->recs[i],
                                        btree->destroy_data);
-                        /* TODO: destroy node->vals[i] */
                 }
         } else {
                 for (i = 0; i < count; i++) {
                         btree_node_free(node->branches[i], btree);
-                        btree->destroy((void *)node->keys[i],
+                        btree->destroy((void *)node->recs[i],
                                        btree->destroy_data);
-                        /* TODO: destroy node->vals[i] */
                 }
                 btree_node_free(node->branches[count], btree);
         }
@@ -114,20 +112,16 @@ static void branch_end(btree_iter_t iter)
  */
 static void node_insert(struct btree_node *branch,
                         struct btree_node *node,
-                        const void *key, size_t keylen,
-                        const void *val, uint32_t pos)
+                        struct record *rec,
+                        uint32_t pos)
 {
         uint32_t i;
 
         for (i = node->count; i-- > pos;) {
-                node->keys[i+1] = node->keys[i];
-                node->keylens[i+1] = node->keylens[i];
-                node->vals[i+1] = node->vals[i];
+                node->recs[i+1] = node->recs[i];
         }
 
-        node->keys[pos] = key;
-        node->keylens[pos] = keylen;
-        node->vals[pos] = val;
+        node->recs[pos] = rec;
 
         if (node->depth) {
                 pos++;
@@ -146,12 +140,11 @@ static void node_insert(struct btree_node *branch,
 }
 
 /* node_split()
- * Inserts `key` and `val` and `branch` into `node` at `pos` splitting
+ * Inserts `rec` and `branch` into `node` at `pos` splitting
  * it into nodes `node`, `branch` with median element being `key`.
  */
 static void node_split(struct btree_node **branch, struct btree_node *node,
-                       void **key, size_t *keylen, void **val,
-                       uint32_t pos)
+                       struct record **rec, uint32_t pos)
 {
         uint32_t i, split;
         struct btree_node *left = node;
@@ -179,8 +172,7 @@ static void node_split(struct btree_node **branch, struct btree_node *node,
 
         /* Initialise right side */
         for (i = split; i < BTREE_MAX_ELEMENTS; i++) {
-                right->keys[i-split] = left->keys[i];
-                right->vals[i-split] = left->vals[i];
+                right->recs[i-split] = left->recs[i];
         }
 
         if (right->depth) {
@@ -197,10 +189,10 @@ static void node_split(struct btree_node **branch, struct btree_node *node,
         /* Insert key/val */
         if (pos <= BTREE_MIN_ELEMENTS) {
                 /* Insert into left half */
-                node_insert(*branch, left, *key, *keylen, *val, pos);
+                node_insert(*branch, left, *rec, pos);
         } else {
                 /* Insert into right half */
-                node_insert(*branch, right, *key, *keylen, *val, pos - split);
+                node_insert(*branch, right, *rec, pos - split);
         }
 
         /* left's rightmost element is going to be the median, so give it to
@@ -212,8 +204,7 @@ static void node_split(struct btree_node **branch, struct btree_node *node,
         }
 
         --left->count;
-        *key = (void *)left->keys[left->count];
-        *val = (void *)left->vals[left->count];
+        *rec = (void *)left->recs[left->count];
         *branch = right;
 }
 
@@ -224,14 +215,11 @@ static void node_move_left(struct btree_node *node, uint32_t pos)
         struct btree_node *tmp = NULL;
         uint32_t i;
 
-        left->keys[left->count] = node->keys[pos];
-        node->keys[pos] = right->keys[0];
+        left->recs[left->count] = node->recs[pos];
+        node->recs[pos] = right->recs[0];
 
-        left->keylens[left->count] = node->keylens[pos];
-        node->keylens[pos] = right->keylens[0];
-
-        left->vals[left->count] = node->vals[pos];
-        node->vals[pos] = right->vals[0];
+        for (i = 1; i < right->count; i++)
+                right->recs[i - 1] = right->recs[i];
 
         if (right->depth) {
                 tmp = right->branches[0];
@@ -256,14 +244,11 @@ static void node_move_right(struct btree_node *node, uint32_t pos)
         uint32_t i;
 
         for (i = right->count; i--; ) {
-                right->keys[i + 1] = right->keys[i];
-                right->keylens[i + 1] = right->keylens[i];
-                right->vals[i + 1] = right->vals[i];
+                right->recs[i + 1] = right->recs[i];
         }
 
-        right->keys[0] = node->keys[pos];
-        right->keylens[0] = node->keylens[pos];
-        right->vals[0] = node->vals[pos];
+        right->recs[0] = node->recs[pos];
+        node->recs[pos] = left->recs[left->count - 1];
 
         if (right->depth) {
                 for (i = right->count + 1; i--;) {
@@ -285,19 +270,13 @@ static void node_combine(struct btree_node *node, uint32_t pos)
         struct btree_node *left = node->branches[pos];
         struct btree_node *right = node->branches[pos + 1];
         struct btree_node *tmp = NULL;
-        const void **key = &left->keys[left->count];
-        const void **val = &left->vals[left->count];
-        size_t *keylen = &left->keylens[left->count];
+        struct record **rec = &left->recs[left->count];
         uint32_t i;
 
-        *key++ = node->keys[pos];
-        *val++ = node->vals[pos];
-        *keylen++ = node->keylens[pos];
+        *rec++ = node->recs[pos];
 
         for (i = 0; i < right->count; i++) {
-                *key++ = right->keys[i];
-                *keylen++ = right->keylens[i];
-                *val++ = right->vals[i];
+                *rec++ = node->recs[i];
         }
 
         if (right->depth) {
@@ -310,9 +289,7 @@ static void node_combine(struct btree_node *node, uint32_t pos)
         }
 
         for (i = pos + 1; i < node->count; i++) {
-                node->keys[i - 1] = node->keys[i];
-                node->keylens[i - 1] = node->keylens[i];
-                node->vals[i - 1] = node->vals[i];
+                node->recs[i - 1] = node->recs[i];
 
                 node->branches[i] = node->branches[i + 1];
                 node->branches[i]->pos = i;
@@ -354,14 +331,46 @@ static void node_remove_leaf_element(struct btree_node *node, uint32_t pos)
         uint32_t i;
 
         for (i = pos + 1; i < node->count; i++) {
-                node->keys[i-1] = node->keys[i];
-                node->keylens[i-1] = node->keylens[i];
-                node->vals[i-1] = node->vals[i];
+                node->recs[i-1] = node->recs[i];
         }
 
         node->count--;
 }
 
+static int node_walk_forward(const struct btree_node *node,
+                             btree_action_cb_t action, void *data)
+{
+        uint32_t i, count;
+
+        count = node->count;
+
+        if (!node->depth) {
+                for (i = 0; i < count; i++) {
+                        if (!action((void *)node->recs[i], data))
+                                return 0;
+                }
+        } else {
+                for (i = 0; i < count; i++) {
+                        if (!node_walk_forward(node->branches[i],
+                                               action, data))
+                                return 0;
+                        if (!action((void *)node->recs[i], data))
+                                return 0;
+                }
+
+                if (!node_walk_forward(node->branches[count], action, data))
+                        return 0;
+        }
+
+        return 1;
+}
+
+int node_print_data(struct record *record, void *data __attribute__((unused)))
+{
+        printf("%s : %s\n", record->key, record->val);
+
+        return 1;
+}
 /**
  * Public functions
  */
@@ -392,16 +401,15 @@ void btree_free(struct btree *btree)
         xfree(btree);
 }
 
-int btree_insert(struct btree *btree,
-                 void *key, size_t keylen,
-                 const void *record)
+int btree_insert(struct btree *btree, struct record *record)
 {
         btree_iter_t iter;
 
-        if (btree_find(btree, key, keylen, iter))
+        printf("Inserting: %s\n", (char *)record->key);
+        if (btree_find(btree, record->key, record->keylen, iter))
                 return BTREE_DUPLICATE;
 
-        btree_insert_at(iter, key, keylen, record);
+        btree_insert_at(iter, record);
 
         return BTREE_OK;
 }
@@ -425,14 +433,14 @@ int btree_lookup(struct btree *btree __attribute__((unused)),
 }
 
 unsigned int btree_memcmp(void *key, size_t keylen,
-                          const void * const *base,
+                          struct record **recs,
                           unsigned int count, int *found)
 {
         unsigned int start = 0;
         unsigned char *k = (unsigned char *) key;
         while (count) {
                 unsigned int middle = count >> 1;
-                unsigned char* b = (unsigned char*)base[start + middle];
+                unsigned char* b = (unsigned char*)recs[start + middle];
 
                 int c = memcmp(k, b, keylen);
                 if (c == 0)
@@ -457,15 +465,15 @@ unsigned int btree_memcmp(void *key, size_t keylen,
         return start;
 }
 
-int btree_destroy(void *record __attribute__((unused)),
+int btree_destroy(struct record *record,
                   void *data __attribute__((unused)))
 {
+        record_free(record);
         return 0;
 }
 
 int btree_find(struct btree *btree, void *key, size_t keylen,
                   btree_iter_t iter)
-
 {
         struct btree_node *node = btree->root;
         uint32_t depth;
@@ -473,18 +481,15 @@ int btree_find(struct btree *btree, void *key, size_t keylen,
         int found = 0;
 
         iter->tree = (struct btree *)btree;
-        iter->key = NULL;
-        iter->val = NULL;
+        iter->record = NULL;
 
         depth = node->depth;
 
         while (1) {
                 int f = 0;
-                pos = btree->search(key, keylen, node->keys, node->count, &f);
+                pos = btree->search(key, keylen, node->recs, node->count, &f);
                 if (f) {
-                        iter->key = (void *)node->keys[pos];
-                        iter->keylen = keylen;
-                        iter->val = (void *)node->vals[pos];
+                        iter->record = node->recs[pos];
                         found = 1;
                 }
 
@@ -500,19 +505,15 @@ int btree_find(struct btree *btree, void *key, size_t keylen,
         return found;
 }
 
-void btree_insert_at(btree_iter_t iter, void *key, size_t keylen,
-                     const void *record)
+void btree_insert_at(btree_iter_t iter, struct record *record)
 {
         struct btree_node *branch = NULL;
         struct btree_node *node = NULL;
         struct btree *btree = iter->tree;
-        void *k = (void *)key;
-        void *v = (void *)record;
+        struct record *rec = record;
 
         /* Set the key/val for iter */
-        iter->key = key;
-        iter->keylen = keylen;
-        iter->val = v;
+        iter->record = record;
 
         /* If the node is not a leaf, iter through to the end of the left
            branch */
@@ -521,20 +522,19 @@ void btree_insert_at(btree_iter_t iter, void *key, size_t keylen,
 
         if (iter->node->count < BTREE_MAX_ELEMENTS) {
                 /* Insert at the current node the iter points to */
-                node_insert(branch, node, key, keylen, v, iter->pos);
+                node_insert(branch, iter->node, rec, iter->pos);
                 goto done;
         } else {
                 /* Split the node, and try inserting the median and right
                    subtree into the parent*/
                 for (;;) {
-                        node_split(&branch, node, &k, &keylen, &v, iter->pos);
+                        node_split(&branch, iter->node, &rec, iter->pos);
 
                         if (!btree_ascend(iter))
                                 break;
 
                         if (iter->node->count < BTREE_MAX_ELEMENTS) {
-                                node_insert(branch, node, key, keylen, v,
-                                            iter->pos);
+                                node_insert(branch, iter->node, rec, iter->pos);
                                 goto done;
                         }
                 } /* for(;;) */
@@ -546,9 +546,7 @@ void btree_insert_at(btree_iter_t iter, void *key, size_t keylen,
                 node->count = 1;
                 node->depth = btree->root->depth + 1;
 
-                node->keys[0] = key;
-                node->keylens[0] = keylen;
-                node->vals[0] = record;
+                node->recs[0] = rec;
 
                 node->branches[0] = btree->root;
                 btree->root->parent = node;
@@ -577,9 +575,7 @@ int btree_deref(btree_iter_t iter)
                 }
         }
 
-        iter->key = (void *)iter->node->keys[iter->pos];
-        iter->keylen = iter->node->keylens[iter->pos];
-        iter->val = (void *)iter->node->vals[iter->pos];
+        iter->record = iter->node->recs[iter->pos];
 
         return 1;
 }
@@ -599,18 +595,14 @@ int btree_remove_at(btree_iter_t iter)
                         goto done;
         } else {
                 /* Save pointers to the data that needs to be removed*/
-                const void **key = &iter->node->keys[iter->pos];
-                size_t *keylen = &iter->node->keylens[iter->pos];
-                const void **val = &iter->node->vals[iter->pos];
+                struct record **rec = &iter->node->recs[iter->pos];
 
                 /* Start branching */
                 iter->pos++;
                 branch_begin(iter);
 
                 /* Replace with the successor */
-                *key = iter->node->keys[0];
-                *keylen = iter->node->keylens[0]; /* XXX:??? */
-                *val = iter->node->vals[0];
+                *rec = iter->node->recs[0];
 
                 node_remove_leaf_element(iter->node, 0);
         }
@@ -639,4 +631,41 @@ done:
         btree->count--;
         iter->node = NULL;
         return 1;
+}
+
+int btree_walk_forward(struct btree *btree, btree_action_cb_t action, void *data)
+{
+        return node_walk_forward(btree->root, action, data);
+}
+
+int btree_print_node_data(struct btree *btree, void *data)
+{
+        return btree_walk_forward(btree, node_print_data, data);
+}
+
+struct record * record_new(unsigned char *key, size_t keylen,
+                           unsigned char *val, size_t vallen)
+{
+        struct record *rec = NULL;
+
+        rec = xmalloc(sizeof(struct record));
+
+        rec->key = xmalloc(sizeof(unsigned char) * keylen);
+        memcpy(rec->key, key, keylen);
+        rec->keylen = keylen;
+
+        rec->val = xmalloc(sizeof(unsigned char) * vallen);
+        memcpy(rec->val, val, vallen);
+        rec->vallen = vallen;
+
+        return rec;
+}
+
+void record_free(struct record *record)
+{
+        assert(record);
+
+        xfree(record->key);
+        xfree(record->val);
+        xfree(record);
 }
