@@ -10,6 +10,10 @@ ZS_OBJS =           	\
 	zs-example.o	\
 	$(NULL)
 
+BT_OBJS =           	\
+	bt-example.o	\
+	$(NULL)
+
 # Headers
 TS_HDRS =           	\
 	$(NULL)
@@ -20,12 +24,14 @@ ZS_HDRS =           	\
 
 TWOSKIP_EXAMPLE=ts-example
 ZEROSKIP_EXAMPLE=zs-example
+BT_EXAMPLE=bt-example
 
 SKIPLISTDB_INC=../src
 ZS_LIBS+= -luuid
 TS_LIBS+= -luuid
+BT_LIBS+= -luuid
 
-all: $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE)
+all: $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE) $(BT_EXAMPLE)
 
 Makefile.dep:
 	$(SDB_CC) -MM *.c > Makefile.dep 2> /dev/null || true
@@ -40,6 +46,9 @@ $(TWOSKIP_EXAMPLE): $(TS_OBJS)
 
 $(ZEROSKIP_EXAMPLE): $(ZS_OBJS)
 	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE) $(ZS_LIBS)
+
+$(BT_EXAMPLE): $(BT_OBJS)
+	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE) $(BT_LIBS)
 
 clean:
 	$(SDB_RM) $(TS_OBJS) $(ZS_OBJS) $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE) \
