@@ -405,7 +405,6 @@ int btree_insert(struct btree *btree, struct record *record)
 {
         btree_iter_t iter;
 
-        printf("Inserting: %s\n", (char *)record->key);
         if (btree_find(btree, record->key, record->keylen, iter))
                 return BTREE_DUPLICATE;
 
@@ -414,7 +413,7 @@ int btree_insert(struct btree *btree, struct record *record)
         return BTREE_OK;
 }
 
-int btree_remove(struct btree *btree, void *key, size_t keylen)
+int btree_remove(struct btree *btree, unsigned char *key, size_t keylen)
 {
         btree_iter_t iter;
 
@@ -432,15 +431,18 @@ int btree_lookup(struct btree *btree __attribute__((unused)),
         return 0;
 }
 
-unsigned int btree_memcmp(void *key, size_t keylen,
+unsigned int btree_memcmp(unsigned char *key, size_t keylen,
                           struct record **recs,
                           unsigned int count, int *found)
 {
         unsigned int start = 0;
+        unsigned int pos = 0;
         unsigned char *k = (unsigned char *) key;
+
         while (count) {
                 unsigned int middle = count >> 1;
-                unsigned char* b = (unsigned char*)recs[start + middle];
+                pos = start + middle;
+                unsigned char* b = (unsigned char*)recs[pos]->key;
 
                 int c = memcmp(k, b, keylen);
                 if (c == 0)
@@ -462,7 +464,7 @@ unsigned int btree_memcmp(void *key, size_t keylen,
                 continue;
         }
 
-        return start;
+        return pos;
 }
 
 int btree_destroy(struct record *record,
@@ -472,7 +474,7 @@ int btree_destroy(struct record *record,
         return 0;
 }
 
-int btree_find(struct btree *btree, void *key, size_t keylen,
+int btree_find(struct btree *btree, unsigned char *key, size_t keylen,
                   btree_iter_t iter)
 {
         struct btree_node *node = btree->root;

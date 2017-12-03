@@ -66,7 +66,8 @@ typedef struct btree_iter btree_iter_t[1];
 /** Callbacks **/
 /* btree_action_cb_t should return 1 for success, for the loop to continue */
 typedef int (*btree_action_cb_t)(struct record *record, void *data);
-typedef unsigned int (*btree_search_cb_t)(void *key, size_t keylen,
+typedef unsigned int (*btree_search_cb_t)(unsigned char *key,
+                                          size_t keylen,
                                           struct record **recs,
                                           unsigned int count,
                                           int *found);
@@ -107,7 +108,7 @@ void btree_insert_at(btree_iter_t iter, struct record *record);
  *   On Success - returns BTREE_OK
  *   On Failure - returns non 0
  */
-int btree_remove(struct btree *tree, void *key, size_t keylen);
+int btree_remove(struct btree *tree, unsigned char *key, size_t keylen);
 
 /* btree_remove_at():
  * Removes the record pointed to by the iter. This function invalidates the
@@ -126,7 +127,7 @@ int btree_lookup(struct btree *tree, const void *key);
  *  On Success: returns 1 with iter->element containing the match
  *  On Failure: returns 0
  */
-int btree_find(struct btree *tree, void *key, size_t keylen,
+int btree_find(struct btree *tree, unsigned char *key, size_t keylen,
                btree_iter_t iter);
 
 /* These are the default callbacks that are used in the absence of
@@ -135,7 +136,7 @@ int btree_find(struct btree *tree, void *key, size_t keylen,
 
 /* The B-Tree requires a binary search function for comparison.
  */
-unsigned int btree_memcmp(void *key, size_t keylen,
+unsigned int btree_memcmp(unsigned char *key, size_t keylen,
                           struct record **recs,
                           unsigned int count, int *found);
 
