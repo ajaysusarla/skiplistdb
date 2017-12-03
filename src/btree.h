@@ -32,6 +32,12 @@ enum {
         BTREE_NOT_FOUND      = -4,
 };
 
+struct record {
+        unsigned char *key;
+        size_t keylen;
+        unsigned char *val;
+        size_t vallen;
+};
 
 struct btree_node {
         struct btree_node *parent;
@@ -41,9 +47,7 @@ struct btree_node {
 
         uint32_t pos;
 
-        const void *keys[BTREE_MAX_ELEMENTS];
-        size_t keylens[BTREE_MAX_ELEMENTS];
-        const void *vals[BTREE_MAX_ELEMENTS];
+        struct record *recs[BTREE_MAX_ELEMENTS];
 
         struct btree_node *branches[];
 };
@@ -54,18 +58,18 @@ struct btree_iter {
 
         uint32_t pos;
 
-        void *key;
-        size_t keylen;
-        void *val;
+        struct record *record;
 };
 
 typedef struct btree_iter btree_iter_t[1];
 
-
 /** Callbacks **/
-typedef int (*btree_action_cb_t)(void *record, void *data);
+/* TODO: The first argument of btree_action_cb_t, is currently node,
+ * but it needs to be node->record, where record should contain,
+ * keys, keylens and vals. */
+typedef int (*btree_action_cb_t)(struct record *record, void *data);
 typedef unsigned int (*btree_search_cb_t)(void *key, size_t keylen,
-                                          const void * const *base,
+                                          struct record **recs,
                                           unsigned int count,
                                           int *found);
 
@@ -93,14 +97,12 @@ void btree_free(struct btree *tree);
  *   On Success - returns BTREE_OK
  *   On Failure - returns non 0
  */
-int btree_insert(struct btree *tree, void *key, size_t keylen,
-                 const void *record);
+int btree_insert(struct btree *tree, struct record *record);
 
 /* btree_insert_at():
  * Insert a record before the one pointed to by iter
  */
-void btree_insert_at(btree_iter_t iter, void *key, size_t keylen,
-                     const void *record);
+void btree_insert_at(btree_iter_t iter, struct record *record);
 
 /* btree_remove():
  * Returns:
@@ -136,9 +138,16 @@ int btree_find(struct btree *tree, void *key, size_t keylen,
 /* The B-Tree requires a binary search function for comparison.
  */
 unsigned int btree_memcmp(void *key, size_t keylen,
-                          const void * const *base,
+                          struct record **recs,
                           unsigned int count, int *found);
 
-int btree_destroy(void *record, void *data);
+int btree_destroy(struct record *record, void *data);
+
+int btree_print_node_data(struct btree *btree, void *data);
+
+/* Record handlers */
+struct record * record_new(unsigned char *key, size_t keylen,
+                           unsigned char *val, size_t vallen);
+void record_free(struct record *record);
 
 #endif  /* _BTREE_H_ */
