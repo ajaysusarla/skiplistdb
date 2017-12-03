@@ -52,7 +52,7 @@ $(BT_EXAMPLE): $(BT_OBJS)
 
 clean:
 	$(SDB_RM) $(TS_OBJS) $(ZS_OBJS) $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE) \
-	*.o Makefile.dep
+	$(BT_EXAMPLE) *.o Makefile.dep
 
 check-syntax:
 	$(CC) $(CFLAGS) -Wextra -pedantic -fsyntax-only $(CHK_SOURCES)
