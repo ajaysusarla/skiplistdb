@@ -11,16 +11,22 @@
 #define _STRARRAY_H_
 
 struct str_array {
-    char **data;
+    const char **datav;
     int count;
     int alloc;
 };
 
-extern char *null_data[];
+extern const char *null_data[];
 
 #define STR_ARRAY_INIT { null_data, 0, 0}
 
 void str_array_init(struct str_array *arr);
 void str_array_clear(struct str_array *arr);
+
+void str_array_add(struct str_array *arr, const char *str);
+void str_array_addv(struct str_array *arr, const char **argv);
+void str_array_remove(struct str_array *arr);
+
+const char **str_array_detach(struct str_array *arr);
 
 #endif  /* _STRARRAY_H_ */
