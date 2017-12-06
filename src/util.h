@@ -24,6 +24,7 @@
 #endif
 
 #include "macros.h"
+#include "strarray.h"
 
 CPP_GUARD_START
 
@@ -176,6 +177,9 @@ bool_t file_exists(const char *file);
 int file_rename(const char *oldpath, const char *newpath);
 
 int xmkdir(const char *path, mode_t mode);
+
+int get_filenames_with_matching_prefix(char *const path[], const char *prefix,
+                                       struct str_array *arr);
 
 /*
   File Locking

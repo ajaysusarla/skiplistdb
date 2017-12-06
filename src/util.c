@@ -11,8 +11,11 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <fts.h>
+#include <libgen.h>             /* For basename() */
 #include <string.h>
 #include <sys/types.h>
+#include <sys/param.h>          /* For PATH_MAX */
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -155,6 +158,74 @@ int file_rename(const char *oldpath, const char *newpath)
         return rename(oldpath, newpath);
 }
 
+
+/* get_filenames_with_matching_prefix()
+ * get files(only) in a given path, matching a prefix.
+ * if `prefix` is NULL, get all files.
+ * `list` contains a list of all paths
+ * Returns 0 on success, non-zero otherwise with `errno` set
+ * appropriately.
+ */
+int get_filenames_with_matching_prefix(char *const path[], const char *prefix,
+                                       struct str_array *arr)
+{
+        FTS *ftsp = NULL;
+        FTSENT *fp = NULL;
+        int fts_options = FTS_NOCHDIR;
+        char *const def_path[] = {".", NULL};
+        char buf[PATH_MAX];
+        size_t prefixlen = 0;
+        int err = 0;
+
+        if (getcwd(buf, sizeof(buf)) == NULL)
+                return errno;
+
+        if (prefix && prefix[0])
+                prefixlen = strlen(prefix);
+
+        ftsp = fts_open(*path ? path : def_path, fts_options, NULL);
+        if (ftsp == NULL) {
+                perror("fts_open:");
+                return errno;
+        }
+
+        while ((fp = fts_read(ftsp)) != NULL) {
+                char *bname;
+                char sbuf[PATH_MAX];
+                int add = 0;
+
+                if (fp->fts_info == FTS_DNR ||
+                    fp->fts_info == FTS_ERR ||
+                    fp->fts_info == FTS_NS) {
+                        err = fp->fts_errno;
+                        break;
+                }
+
+                if (fp->fts_info != FTS_F)
+                        continue;
+
+                bname = basename(fp->fts_path);
+
+                snprintf(sbuf, PATH_MAX, "%s/%s", *path ? *path : buf, bname);
+                if (!prefix)
+                        add = 1;
+                else {
+                        if (strncmp(bname, prefix, prefixlen) == 0)
+                                add = 1;
+                }
+
+
+                if (add)
+                        str_array_add(arr, sbuf);
+        }
+
+        fts_close(ftsp);
+
+        if (err)
+                errno = err;
+
+        return err;
+}
 
 /**
  ** File locking/unlocking functions.
