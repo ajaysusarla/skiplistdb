@@ -149,7 +149,6 @@ struct zs_long_commit {
 #define MAX_SHORT_KEY_LEN 65536
 #define MAX_SHORT_VAL_LEN 16777216
 
-//static size_t SCRATCHBUFSIZ = (8 * 1024);
 #define SCRATCHBUFSIZ 8192
 static unsigned char scratch[SCRATCHBUFSIZ];
 cstring strinit = CSTRING_INIT;
@@ -765,6 +764,14 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
                 goto done;      /* TODO: Free data */
         }
 
+        /*
+         * TODO:
+         *   + Figure out the list of the files in the DB
+         *   + Find the 'active file'(unfinalized) in the db and only map that
+         *   + For all the other files(finalized), just map the [Pointers]
+         *     section
+         */
+
         if (priv->mappedfilename.buf == cstring_base) {
             fprintf(stderr, "Failed parsing zeroskip DB content.\n");
             ret = SDB_INVALID_DB;
@@ -797,8 +804,11 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
                 goto done;
         }
 
-        /* Seek to the end of the header, that's where the records start */
-        mappedfile_seek(&priv->mf, ZS_HDR_SIZE, NULL);
+        /* Seek to the end of the file, that's where the
+           records need to appended to.
+        */
+        if (mf_size)
+                mappedfile_seek(&priv->mf, mf_size, NULL);
 
         /* XXX: Verify if the DB is sane */
 done:
