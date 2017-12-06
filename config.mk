@@ -54,10 +54,10 @@ SDB_AR=$(QAR)ar
 UNAME := $(shell $(CC) -dumpmachine 2>&1 | grep -E -o "linux|darwin")
 
 ifeq ($(UNAME), linux)
-OSFLAGS = -DLINUX
+OSFLAGS = -DLINUX -D_GNU_SOURCE
 DEBUG = -ggdb
 else ifeq ($(UNAME), darwin)
-OSFLAGS = -DMACOSX
+OSFLAGS = -DMACOSX -D_BSD_SOURCE
 DEBUG = -g
 else ifeq ($(UNAME), solaris)
 OSFLAGS = -DSOLARIS
