@@ -627,30 +627,6 @@ static int update_dot_zsdb(struct zsdb_priv *priv __attribute__((unused)))
     return SDB_OK;
 }
 
-static int zs_init(DBType type __attribute__((unused)), struct skiplistdb **db,
-                   struct txn **tid)
-{
-        struct zsdb_priv *priv;
-
-        assert(db);
-        assert(*db);
-
-        priv = (*db)->priv;
-
-        (*db)->initialised = 1;
-
-        return SDB_OK;
-}
-
-static int zs_final(struct skiplistdb *db)
-{
-        assert(db);
-
-        zeroskip_free(db);
-
-        return SDB_OK;
-}
-
 /*
  * init_db_dir()
  */
@@ -719,6 +695,79 @@ static int init_db_dir(struct skiplistdb *db)
 
         return ret;
 }
+
+static int zs_read_record(struct zsdb_priv *priv, struct zs_rec *rec,
+                          size_t offset)
+{
+        unsigned char *bptr = priv->mf->ptr;
+        unsigned char *fptr = bptr + offset;
+
+        memset(rec, 0, sizeof(struct zs_rec));
+
+        rec->type = fptr[0];
+
+        switch(rec->type) {
+        case REC_TYPE_SHORT_KEY:
+                printf("SHORT KEY\n");
+                rec->rec.skey.length = ntoh16(*((uint16_t *)(fptr + 1)));
+                printf(" Length: %d\n", rec->rec.skey.length);
+                break;
+        case REC_TYPE_LONG_KEY:
+                printf("LONG KEY\n");
+                break;
+        case REC_TYPE_SHORT_VALUE:
+                printf("SHORT KEY\n");
+                break;
+        case REC_TYPE_LONG_VALUE:
+                printf("LONG VALUE\n");
+                break;
+        case REC_TYPE_SHORT_COMMIT:
+                printf("SHORT COMMIT\n");
+                break;
+        case REC_TYPE_LONG_COMMIT:
+                printf("LONG COMMIT\n");
+                break;
+        case REC_TYPE_2ND_HALF_COMMIT:
+                break;
+        case REC_TYPE_SHORT_FINAL:
+                break;
+        case REC_TYPE_LONG_FINAL:
+                break;
+        case REC_TYPE_DELETED:
+                break;
+        case REC_TYPE_UNUSED:
+                break;
+        default:
+                break;
+        }
+
+        return SDB_OK;
+}
+
+static int zs_init(DBType type __attribute__((unused)), struct skiplistdb **db,
+                   struct txn **tid)
+{
+        struct zsdb_priv *priv;
+
+        assert(db);
+        assert(*db);
+
+        priv = (*db)->priv;
+
+        (*db)->initialised = 1;
+
+        return SDB_OK;
+}
+
+static int zs_final(struct skiplistdb *db)
+{
+        assert(db);
+
+        zeroskip_free(db);
+
+        return SDB_OK;
+}
+
 
 static int zs_open(const char *dbdir, struct skiplistdb *db,
                    int flags, struct txn **tid)
@@ -981,23 +1030,37 @@ static int zs_abort(struct skiplistdb *db __attribute__((unused)),
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_dump(struct skiplistdb *db __attribute__((unused)),
+static int zs_dump(struct skiplistdb *db,
                    DBDumpLevel level __attribute__((unused)))
 {
         int ret = SDB_OK;
         struct zsdb_priv *priv;
+        size_t dbsize = 0, offset = ZS_HDR_SIZE;
+        struct zs_rec record;
 
         assert(db);
         assert(db->priv);
 
         priv = db->priv;
 
+        if (!priv->is_open)
+                return SDB_ERROR;
+
         printf("Zeroskip HEADER:\n signature=0x%" PRIx64 "\n version=%u\n",
                priv->header.signature,
                priv->header.version);
 
-        if (!priv->is_open)
-                return SDB_ERROR;
+        mappedfile_size(&priv->mf, &dbsize);
+        if (dbsize == 0 || dbsize <= ZS_HDR_SIZE) {
+                fprintf(stderr, "No records in zeroskip DB\n");
+                return SDB_IOERROR;
+        }
+
+        zs_read_record(priv, &record, offset);
+
+        /* while (offset < dbsize) { */
+        /*         size_t recsize = 0; */
+        /* } */
 
         return ret;
 }
