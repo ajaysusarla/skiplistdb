@@ -387,9 +387,9 @@ unsigned int murmur3_hash_32(const void *key, int len)
         tail = (const uint8_t *)(data + nblocks * 4);
         switch (len & 3) {
         case 3: k ^= tail[2] << 16;
-            GCC_FALLTHROUGH;
+            _fallthrough_;
         case 2: k ^= tail[1] << 8;
-            GCC_FALLTHROUGH;
+            _fallthrough_;
         case 1: k ^= tail[0];
                 k *= c1;
                 k = ROTL32(k, r1);

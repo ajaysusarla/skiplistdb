@@ -73,7 +73,7 @@ static int global_options(int argc, char **argv)
                 case 'h':
                         version();
                         printf("\n");
-                        GCC_FALLTHROUGH;
+                        _fallthrough_;
                 case '?':
                         usage();
                         return option == 'h';

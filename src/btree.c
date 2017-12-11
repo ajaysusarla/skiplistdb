@@ -365,7 +365,7 @@ static int node_walk_forward(const struct btree_node *node,
         return 1;
 }
 
-int node_print_data(struct record *record, void *data __attribute__((unused)))
+int node_print_data(struct record *record, void *data _unused_)
 {
         printf("%s : %s\n", record->key, record->val);
 
@@ -425,8 +425,8 @@ int btree_remove(struct btree *btree, unsigned char *key, size_t keylen)
         return BTREE_NOT_FOUND;
 }
 
-int btree_lookup(struct btree *btree __attribute__((unused)),
-                 const void *key __attribute__((unused)))
+int btree_lookup(struct btree *btree _unused_,
+                 const void *key _unused_)
 {
         return 0;
 }
@@ -468,7 +468,7 @@ unsigned int btree_memcmp(unsigned char *key, size_t keylen,
 }
 
 int btree_destroy(struct record *record,
-                  void *data __attribute__((unused)))
+                  void *data _unused_)
 {
         record_free(record);
         return 0;

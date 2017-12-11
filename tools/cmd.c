@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "skiplistdb.h"
+#include "macros.h"
 
 void cmd_die_usage(const char *progname, const char *usage)
 {
@@ -19,7 +20,7 @@ void cmd_die_usage(const char *progname, const char *usage)
 }
 
 
-int cmd_parse_config(const char *cfile __attribute__((unused)))
+int cmd_parse_config(const char *cfile _unused_)
 {
         return 0;
 }

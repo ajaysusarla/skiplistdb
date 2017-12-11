@@ -21,10 +21,17 @@
 #endif
 
 
-#if defined __GNUC__ &&  __GNUC__ > 6
-    #define GCC_FALLTHROUGH __attribute__((fallthrough))
+#if defined __GNUC__
+
+#define _unused_          __attribute__((unused))
+#define _cleanup_(x)      __attribute__((cleanup(x)))
+
+#if __GNUC__ >= 7
+#define _fallthrough_ __attribute__((fallthrough))
 #else
-    #define GCC_FALLTHROUGH /* fall through */
-#endif
+#define _fallthrough_ /* fall through */
+#endif                /* __GNUC__ >= 7 */
+
+#endif  /* __GNUC__ */
 
 #endif  /* _MACROS_H_ */
