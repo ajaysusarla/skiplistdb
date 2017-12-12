@@ -228,6 +228,28 @@ int get_filenames_with_matching_prefix(char *const path[], const char *prefix,
 }
 
 /**
+ ** Time functions
+ **/
+/* Unix time in microseconds */
+long long time_in_us(void)
+{
+        struct timeval tv;
+        long long ust;
+
+        gettimeofday(&tv, NULL);
+        ust = ((long long)tv.tv_sec) * 1000000;
+        ust += tv.tv_usec;
+
+        return ust;
+}
+
+/* Unix time in milliseconds */
+long long time_in_ms(void)
+{
+        return time_in_us()/1000;
+}
+
+/**
  ** File locking/unlocking functions.
  **/
 enum LockAction {
@@ -332,3 +354,4 @@ int file_unlock(int fd, struct flockctx **ctx)
 done:
         return err;
 }
+

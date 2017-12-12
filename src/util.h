@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <sys/time.h>
 
 #ifdef LINUX
 #include <endian.h>
@@ -180,6 +181,10 @@ int xmkdir(const char *path, mode_t mode);
 
 int get_filenames_with_matching_prefix(char *const path[], const char *prefix,
                                        struct str_array *arr);
+
+/* Time functions */
+long long time_in_us(void);
+long long time_in_ms(void);
 
 /*
   File Locking
