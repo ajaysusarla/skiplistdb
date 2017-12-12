@@ -3,29 +3,31 @@
 
 # Object files
 SDB_LIBOBJS =          	\
+	btree.o		\
 	cstring.o   	\
-	twoskip.o   	\
-	zeroskip.o	\
-	util.o      	\
-	mappedfile.o 	\
 	htable.o	\
+	log.o 		\
+	mappedfile.o 	\
 	skiplistdb.o	\
 	strarray.o	\
-	btree.o		\
+	twoskip.o   	\
+	util.o      	\
+	zeroskip.o	\
 	$(NULL)
 
 # Headers
 SDB_HDRS =           	\
+	btree.h		\
 	cstring.h   	\
-	twoskip.h   	\
-	zeroskip.h	\
-	util.h 	    	\
+	htable.h	\
+	log.h		\
 	macros.h    	\
 	mappedfile.h 	\
-	htable.h	\
 	skiplistdb.h	\
 	strarray.h	\
-	btreee.h	\
+	twoskip.h   	\
+	util.h 	    	\
+	zeroskip.h	\
 	$(NULL)
 
 all: clean-ar $(AR_LIB_FILE)
