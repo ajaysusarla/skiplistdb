@@ -104,9 +104,10 @@ enum record_t {
         REC_TYPE_UNUSED              = 0x80,
 };
 
+#if 0
 struct zs_short_key {
         uint16_t length;
-        uint64_t ptr_to_val : 40;
+        uint64_t val_offset : 40;
         uint8_t  *data;
         uint8_t  padding[7];
 
@@ -115,7 +116,7 @@ struct zs_short_key {
 struct zs_long_key {
         uint8_t  padding1[7];
         uint64_t length;
-        uint64_t ptr_to_val;
+        uint64_t val_offset;
         uint8_t  *data;
         uint8_t  padding2[7];
 };
@@ -145,12 +146,52 @@ struct zs_long_commit {
         uint8_t  padding2[3];
         uint32_t crc32;
 };
+#endif
+
+struct zs_short_key {
+        uint8_t  type;
+        uint16_t length;
+        uint64_t val_offset;
+        uint8_t  *data;
+};
+
+struct zs_long_key {
+        uint8_t  type;
+        uint64_t length;
+        uint64_t val_offset;
+        uint8_t  *data;
+};
+
+struct zs_short_val {
+        uint8_t  type;
+        uint32_t length;
+        uint8_t  *data;
+};
+
+struct zs_long_val {
+        uint8_t  type;
+        uint64_t length;
+        uint8_t  *data;
+};
+
+struct zs_short_commit {
+        uint8_t type;
+        uint32_t length;
+        uint32_t crc32;
+};
+
+struct zs_long_commit {
+        uint8_t type1;
+        uint8_t  padding1[7];
+        uint64_t length;
+        uint8_t type2;
+        uint8_t  padding2[3];
+        uint32_t crc32;
+};
 
 #define MAX_SHORT_KEY_LEN 65536
 #define MAX_SHORT_VAL_LEN 16777216
 
-#define SCRATCHBUFSIZ 8192
-static unsigned char scratch[SCRATCHBUFSIZ];
 cstring strinit = CSTRING_INIT;
 
 struct zs_rec {
@@ -187,6 +228,7 @@ struct txn {
  */
 struct zsdb_priv {
         struct mappedfile *mf;
+        struct mappedfile **mfs;
         cstring mappedfilename;
 
         struct zs_header header;
@@ -204,6 +246,14 @@ struct zsdb_priv {
 /**
  ** Private functions
  **/
+static inline size_t round_up(size_t n, size_t m)
+{
+        return ((n + m - 1) / m) * m;
+}
+
+#define roundup64(x) round_up(x, 64)
+#define roundup32(x) round_up(x, 32)
+
 static inline int rec_offset(uint8_t type, size_t datalen)
 {
         switch(type) {
@@ -293,185 +343,122 @@ static int check_zsdb_header(struct zsdb_priv *priv)
         return SDB_OK;
 }
 
-static int zs_write_record(struct zsdb_priv *priv, enum record_t type,
-                           unsigned char *key, size_t keylen,
-                           unsigned char *val, size_t vallen)
+static inline uint64_t get40msb(uint64_t num)
+{
+        register uint32_t u;
+        register uint16_t l;
+        u = num >> 32;
+        l = (uint16_t) num;
+
+        return u | ((uint64_t)l  << 32);
+}
+
+static int zs_write_keyval_record(struct zsdb_priv *priv,
+                                  unsigned char *key, size_t keylen,
+                                  unsigned char *data, size_t datalen)
 {
         int ret = SDB_OK;
+        struct iovec iorec[7];
+        size_t buflen, offset, iovlen, nbytes;
+        unsigned char *buf, *ptr, *offsetptr;
+        enum record_t keytype, valtype;
 
         assert(priv);
 
-        switch(type) {
-        case REC_TYPE_SHORT_KEY:
-                break;
-        case REC_TYPE_LONG_KEY:
-                break;
-        case REC_TYPE_SHORT_VALUE:
-                break;
-        case REC_TYPE_LONG_VALUE:
-                break;
-        case REC_TYPE_SHORT_COMMIT:
-                break;
-        case REC_TYPE_LONG_COMMIT:
-                break;
-        case REC_TYPE_2ND_HALF_COMMIT:
-                break;
-        case REC_TYPE_SHORT_FINAL:
-                break;
-        case REC_TYPE_LONG_FINAL:
-                break;
-        case REC_TYPE_DELETED:
-                break;
-        case REC_TYPE_UNUSED:
-                break;
-        default:
-                ret = SDB_ERROR;
-                goto done;
-        }
-
-done:
-        return ret;
-}
-
-static int prepare_short_key(struct zs_rec *keyrec, unsigned char **bufp)
-{
-        int ret = SDB_OK;
-        uint16_t length;
-        uint64_t val_loc;
-
-        /* type */
-        memcpy(*bufp, &keyrec->type, sizeof(keyrec->type));
-        *bufp += sizeof(keyrec->type);
-
-        /* length */
-        length = hton16(keyrec->rec.skey.length);
-        memcpy(*bufp, &length, sizeof(length));
-        *bufp += sizeof(length);
-
-        /* pointer to the value */
-        /* TODO: Copy on 40 bits */
-        val_loc = hton64((uint64_t)*bufp + keyrec->rec.skey.length);
-        memcpy(*bufp, &val_loc, sizeof(val_loc));
-        *bufp += sizeof(val_loc);
-
-        /* key data */
-        memcpy(*bufp, keyrec->rec.skey.data, keyrec->rec.skey.length);
-        *bufp += keyrec->rec.skey.length;
-
-        return ret;
-}
-
-static int prepare_long_key(struct zs_rec *keyrec, unsigned char **bufp)
-{
-        int ret = SDB_OK;
-        uint64_t length;
-        uint64_t val_loc;
-
-        /* type */
-        memcpy(*bufp, &keyrec->type, sizeof(keyrec->type));
-        *bufp += sizeof(keyrec->type);
-
-        /* length */
-        length = hton64(keyrec->rec.lkey.length);
-        memcpy(*bufp, &length, sizeof(length));
-        *bufp += sizeof(length);
-
-        /* pointer to the value */
-        val_loc = hton64((uint64_t)*bufp + keyrec->rec.lkey.length);
-        memcpy(*bufp, &val_loc, sizeof(val_loc));
-        *bufp += sizeof(val_loc);
-
-        /* key data */
-        memcpy(*bufp, keyrec->rec.lkey.data, keyrec->rec.lkey.length);
-        *bufp += keyrec->rec.lkey.length;
-
-        return ret;
-}
-
-static int prepare_short_val(struct zs_rec *valrec, unsigned char **bufp)
-{
-        int ret = SDB_OK;
-        uint32_t length;
-
-        /* type */
-        memcpy(*bufp, &valrec->type, sizeof(valrec->type));
-        *bufp += sizeof(valrec->type);
-
-        /* length */
-        length = hton32(valrec->rec.sval.length);
-        memcpy(*bufp, &length, sizeof(length));
-        *bufp += sizeof(length);
-
-        /* val data */
-        memcpy(*bufp, valrec->rec.sval.data, valrec->rec.sval.length);
-        *bufp += valrec->rec.sval.length;
-
-        return ret;
-}
-
-static int prepare_long_val(struct zs_rec *valrec, unsigned char **bufp)
-{
-        int ret = SDB_OK;
-        uint64_t length;
-
-        /* type */
-        memcpy(*bufp, &valrec->type, sizeof(valrec->type));
-        *bufp += sizeof(valrec->type);
-
-        /* length */
-        length = hton64(valrec->rec.lval.length);
-        memcpy(*bufp, &length, sizeof(length));
-        *bufp += sizeof(length);
-
-        /* val data */
-        memcpy(*bufp, valrec->rec.lval.data, valrec->rec.lval.length);
-        *bufp += valrec->rec.lval.length;
-
-        return ret;
-}
-
-static int zs_write_key_val_record(struct zsdb_priv *priv,
-                                   struct zs_rec *keyrec,
-                                   struct zs_rec *valrec)
-{
-        size_t bytes_written, bytes;
-        int ret = SDB_OK;
-        unsigned char *sptr;
-
-        memset(&scratch, 0, SCRATCHBUFSIZ);
-        sptr = scratch;
-        bytes = 0;
-
-        if (keyrec->type == REC_TYPE_SHORT_KEY) {
-                prepare_short_key(keyrec, &sptr);
-        } else if (keyrec->type == REC_TYPE_LONG_KEY) {
-                prepare_long_key(keyrec, &sptr);
+        /* Buflen */
+        buflen = keylen + datalen;
+        if (keylen <= MAX_SHORT_KEY_LEN) {
+                keytype = REC_TYPE_SHORT_KEY;
+                buflen += sizeof(struct zs_short_key);
         } else {
-                fprintf(stderr, "Invalid type for Key record!\n");
-                ret = SDB_INTERNAL;
-                goto done;
+                keytype = REC_TYPE_LONG_KEY;
+                buflen += sizeof(struct zs_long_key);
         }
 
-        if (valrec->type == REC_TYPE_SHORT_VALUE) {
-                prepare_short_val(valrec, &sptr);
-        } else if (valrec->type == REC_TYPE_LONG_VALUE) {
-                prepare_long_val(valrec, &sptr);
+        if (datalen <= MAX_SHORT_VAL_LEN) {
+                valtype = REC_TYPE_SHORT_VALUE;
+                buflen += sizeof(struct zs_short_val);
         } else {
-                fprintf(stderr, "Invalid type for Value record!\n");
-                ret = SDB_INTERNAL;
-                goto done;
+                valtype = REC_TYPE_LONG_VALUE;
+                buflen += sizeof(struct zs_long_val);
         }
 
-        bytes = sptr - scratch;
+        buflen = roundup64(buflen);
+        buf = xcalloc(1, buflen);
 
-        ret = mappedfile_write(&priv->mf, (void *)scratch, bytes, &bytes_written);
+        iovlen = 0;
+
+        /** Key **/
+        /* key type */
+        iorec[0].iov_base = buf;
+        iorec[0].iov_len = sizeof(uint8_t);
+        iovlen += iorec[0].iov_len;
+        buf[0] = keytype;
+
+        if (keytype == REC_TYPE_SHORT_KEY) {
+                /* length of key */
+                iorec[1].iov_base = buf + iovlen;
+                iorec[1].iov_len = sizeof(uint16_t);
+                *((uint16_t *)(buf + iovlen)) = hton16(keylen);
+                iovlen += iorec[1].iov_len;
+        } else {
+                /* length of key */
+                iorec[1].iov_base = buf + iorec[0].iov_len;
+                iorec[1].iov_len = sizeof(uint64_t);
+                *((uint64_t *)(buf + iovlen)) = hton64(keylen);
+                iovlen += iorec[1].iov_len;
+        }
+        /* offset to value */
+        iorec[2].iov_base = buf + iovlen;
+        iorec[2].iov_len = sizeof(uint64_t);
+        offsetptr = buf + iovlen;
+        iovlen += iorec[2].iov_len;
+
+        /* the actual key */
+        iorec[3].iov_base = buf + iovlen;
+        iorec[3].iov_len = keylen;
+        memcpy(buf+iovlen, key, keylen);
+        iovlen += iorec[3].iov_len;
+
+        *((uint64_t *)(offsetptr)) = hton64(iovlen);
+
+        /** Value **/
+        /* value type */
+        iorec[4].iov_base = buf + iovlen;
+        iorec[4].iov_len = sizeof(uint8_t);
+        buf[iovlen] = valtype;
+        iovlen += iorec[4].iov_len;
+
+        if (valtype == REC_TYPE_SHORT_VALUE) {
+                /* length of value */
+                iorec[5].iov_base = buf + iovlen;
+                iorec[5].iov_len = sizeof(uint32_t);
+                *((uint32_t *)(buf + iovlen)) = hton32(datalen);
+                iovlen += iorec[5].iov_len;
+        } else {
+                /* length of value */
+                iorec[5].iov_base = buf + iovlen;
+                iorec[5].iov_len = sizeof(uint64_t);
+                *((uint64_t *)(buf + iovlen)) = hton64(datalen);
+                iovlen += iorec[5].iov_len;
+        }
+
+        /* the actual value */
+        iorec[6].iov_base = buf + iovlen;
+        iorec[6].iov_len = datalen;
+        memcpy(buf+iovlen, data, datalen);
+
+        /* mappedfile_write_iov(&priv->mf, (const struct iovec *)&iorec, */
+        /*                      7, &nbytes); */
+
+        ret = mappedfile_write(&priv->mf, (void *)buf, buflen, &nbytes);
         if (ret) {
                 fprintf(stderr, "Error writing record");
                 ret = SDB_IOERROR;
                 goto done;
         }
 
-        assert(bytes_written == bytes);
+        /* TODO; assert(bytes_written == bytes); */
 
         /* Flush the change to disk */
         ret = mappedfile_flush(&priv->mf);
@@ -482,9 +469,13 @@ static int zs_write_key_val_record(struct zsdb_priv *priv,
                 goto done;
         }
 
+        fprintf(stderr, "%zu bytes created. %zu bytes written.\n",
+                iovlen, nbytes);
 done:
+        xfree(buf);
         return ret;
 }
+
 
 static int is_zsdb_dir(struct zsdb_priv *priv)
 {
@@ -959,8 +950,7 @@ static int zs_add(struct skiplistdb *db,
            struct txn **tid)
 {
         int ret = SDB_OK;
-        struct zs_rec keyrec, valrec;
-        struct zsdb_priv *priv;
+         struct zsdb_priv *priv;
 
         assert(db);
         assert(key);
@@ -972,31 +962,7 @@ static int zs_add(struct skiplistdb *db,
         if (!priv->is_open)
                 return SDB_ERROR;
 
-        /* Key */
-        if (keylen <= MAX_SHORT_KEY_LEN) {
-                keyrec.type = REC_TYPE_SHORT_KEY;
-                keyrec.rec.skey.length = keylen;
-                keyrec.rec.skey.ptr_to_val = 0;
-                keyrec.rec.skey.data = key;
-        } else {
-                keyrec.type = REC_TYPE_LONG_KEY;
-                keyrec.rec.lkey.length = keylen;
-                keyrec.rec.lkey.ptr_to_val = 0;
-                keyrec.rec.lkey.data = key;
-        }
-
-        /* Value */
-        if (datalen <= MAX_SHORT_VAL_LEN) {
-                valrec.type = REC_TYPE_SHORT_VALUE;
-                valrec.rec.sval.length = datalen;
-                valrec.rec.sval.data = data;
-        } else {
-                valrec.type = REC_TYPE_LONG_VALUE;
-                valrec.rec.lval.length = datalen;
-                valrec.rec.lval.data = data;
-        }
-
-        ret = zs_write_key_val_record(priv, &keyrec, &valrec);
+        ret = zs_write_keyval_record(priv, key, keylen, data, datalen);
 
         return SDB_OK;
 }
