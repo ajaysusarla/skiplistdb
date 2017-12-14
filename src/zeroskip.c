@@ -246,14 +246,6 @@ struct zsdb_priv {
 /**
  ** Private functions
  **/
-static inline size_t round_up(size_t n, size_t m)
-{
-        return ((n + m - 1) / m) * m;
-}
-
-#define roundup64(x) round_up(x, 64)
-#define roundup32(x) round_up(x, 32)
-
 static inline int rec_offset(uint8_t type, size_t datalen)
 {
         switch(type) {

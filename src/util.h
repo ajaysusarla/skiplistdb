@@ -186,6 +186,15 @@ int get_filenames_with_matching_prefix(char *const path[], const char *prefix,
 long long time_in_us(void);
 long long time_in_ms(void);
 
+/* Round up `n` to the nearest multiple of `m` */
+static inline size_t round_up(size_t n, size_t m)
+{
+        return ((n + m - 1) / m) * m;
+}
+
+#define roundup64(x) round_up(x, 64)
+#define roundup32(x) round_up(x, 32)
+
 /*
   File Locking
  */
