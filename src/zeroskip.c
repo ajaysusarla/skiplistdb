@@ -345,112 +345,162 @@ static inline uint64_t get40msb(uint64_t num)
         return u | ((uint64_t)l  << 32);
 }
 
+
+/* Caller should free buf
+ */
+static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
+                              unsigned char **buf, size_t *buflen)
+{
+        int ret = SDB_OK;
+        unsigned char *kbuf;
+        size_t kbuflen, finalkeylen, pos;
+        enum record_t type;
+
+        /* Minimum buf size */
+        if (keylen <= MAX_SHORT_KEY_LEN) {
+                kbuflen = sizeof(struct zs_short_key);
+                type = REC_TYPE_SHORT_KEY;
+        } else {
+                kbuflen = sizeof(struct zs_long_key);
+                type = REC_TYPE_LONG_KEY;
+        }
+
+        finalkeylen = roundup64(keylen);
+        kbuflen += finalkeylen;
+
+        kbuf = xcalloc(1, kbuflen);
+
+        pos = 0;
+
+        /* keytype */
+        kbuf[pos] = type;
+        pos += sizeof(uint8_t);
+
+        /* length of key */
+        if (type == REC_TYPE_SHORT_KEY) {
+                *((uint16_t *)(kbuf + pos)) = hton16(keylen);
+                pos += sizeof(uint16_t);
+        } else {
+                *((uint64_t *)(kbuf + pos)) = hton64(keylen);
+                pos += sizeof(uint64_t);
+        }
+
+        /* offset to value - point to the end of the buffer,
+         * after which the value buffer begins */
+        *((uint64_t *)(kbuf + pos)) = hton64(kbuflen);
+        pos += sizeof(uint64_t);
+
+        /* the key */
+        memcpy(kbuf + pos, key, keylen);
+        pos += keylen;
+
+        *buflen = kbuflen;
+        *buf = kbuf;
+
+        return ret;
+}
+
+/* Caller should free buf
+ */
+static int zs_prepare_val_buf(unsigned char *val, size_t vallen,
+                              unsigned char **buf, size_t *buflen)
+{
+        int ret = SDB_OK;
+        unsigned char *vbuf;
+        size_t vbuflen, finalvallen, pos;
+        enum record_t type;
+
+        /* Minimum buf size */
+        if (vallen <= MAX_SHORT_VAL_LEN) {
+                vbuflen = sizeof(struct zs_short_val);
+                type = REC_TYPE_SHORT_VALUE;
+        } else {
+                vbuflen = sizeof(struct zs_long_val);
+                type = REC_TYPE_LONG_VALUE;
+        }
+
+        finalvallen = roundup64(vallen);
+        vbuflen += finalvallen;
+
+        vbuf = xcalloc(1, vbuflen);
+
+        pos = 0;
+
+        /* type */
+        vbuf[pos] = type;
+        pos += sizeof(uint8_t);
+
+        /* length of value */
+        if (type == REC_TYPE_SHORT_VALUE) {
+                *((uint32_t *)(vbuf + pos)) = hton32(vallen);
+                pos += sizeof(uint32_t);
+        } else {
+                *((uint64_t *)(vbuf + pos)) = hton64(vallen);
+                pos += sizeof(uint64_t);
+        }
+
+        /* the value */
+        memcpy(vbuf+pos, val, vallen);
+
+        *buflen = vbuflen;
+        *buf = vbuf;
+
+        return ret;
+}
+
 static int zs_write_keyval_record(struct zsdb_priv *priv,
                                   unsigned char *key, size_t keylen,
                                   unsigned char *data, size_t datalen)
 {
         int ret = SDB_OK;
-        struct iovec iorec[7];
-        size_t buflen, offset, iovlen, nbytes;
-        unsigned char *buf, *ptr, *offsetptr;
-        enum record_t keytype, valtype;
+        size_t keybuflen, valbuflen;
+        unsigned char *keybuf, *valbuf;
+        size_t mfsize, nbytes;
 
         assert(priv);
 
-        /* Buflen */
-        buflen = keylen + datalen;
-        if (keylen <= MAX_SHORT_KEY_LEN) {
-                keytype = REC_TYPE_SHORT_KEY;
-                buflen += sizeof(struct zs_short_key);
-        } else {
-                keytype = REC_TYPE_LONG_KEY;
-                buflen += sizeof(struct zs_long_key);
+        ret = zs_prepare_key_buf(key, keylen, &keybuf, &keybuflen);
+        if (ret != SDB_OK) {
+                return SDB_IOERROR;
         }
 
-        if (datalen <= MAX_SHORT_VAL_LEN) {
-                valtype = REC_TYPE_SHORT_VALUE;
-                buflen += sizeof(struct zs_short_val);
-        } else {
-                valtype = REC_TYPE_LONG_VALUE;
-                buflen += sizeof(struct zs_long_val);
+        ret = zs_prepare_val_buf(data, datalen, &valbuf, &valbuflen);
+        if (ret != SDB_OK) {
+                return SDB_IOERROR;
         }
 
-        buflen = roundup64(buflen);
-        buf = xcalloc(1, buflen);
-
-        iovlen = 0;
-
-        /** Key **/
-        /* key type */
-        iorec[0].iov_base = buf;
-        iorec[0].iov_len = sizeof(uint8_t);
-        iovlen += iorec[0].iov_len;
-        buf[0] = keytype;
-
-        if (keytype == REC_TYPE_SHORT_KEY) {
-                /* length of key */
-                iorec[1].iov_base = buf + iovlen;
-                iorec[1].iov_len = sizeof(uint16_t);
-                *((uint16_t *)(buf + iovlen)) = hton16(keylen);
-                iovlen += iorec[1].iov_len;
-        } else {
-                /* length of key */
-                iorec[1].iov_base = buf + iorec[0].iov_len;
-                iorec[1].iov_len = sizeof(uint64_t);
-                *((uint64_t *)(buf + iovlen)) = hton64(keylen);
-                iovlen += iorec[1].iov_len;
-        }
-        /* offset to value */
-        iorec[2].iov_base = buf + iovlen;
-        iorec[2].iov_len = sizeof(uint64_t);
-        offsetptr = buf + iovlen;
-        iovlen += iorec[2].iov_len;
-
-        /* the actual key */
-        iorec[3].iov_base = buf + iovlen;
-        iorec[3].iov_len = keylen;
-        memcpy(buf+iovlen, key, keylen);
-        iovlen += iorec[3].iov_len;
-
-        *((uint64_t *)(offsetptr)) = hton64(iovlen);
-
-        /** Value **/
-        /* value type */
-        iorec[4].iov_base = buf + iovlen;
-        iorec[4].iov_len = sizeof(uint8_t);
-        buf[iovlen] = valtype;
-        iovlen += iorec[4].iov_len;
-
-        if (valtype == REC_TYPE_SHORT_VALUE) {
-                /* length of value */
-                iorec[5].iov_base = buf + iovlen;
-                iorec[5].iov_len = sizeof(uint32_t);
-                *((uint32_t *)(buf + iovlen)) = hton32(datalen);
-                iovlen += iorec[5].iov_len;
-        } else {
-                /* length of value */
-                iorec[5].iov_base = buf + iovlen;
-                iorec[5].iov_len = sizeof(uint64_t);
-                *((uint64_t *)(buf + iovlen)) = hton64(datalen);
-                iovlen += iorec[5].iov_len;
-        }
-
-        /* the actual value */
-        iorec[6].iov_base = buf + iovlen;
-        iorec[6].iov_len = datalen;
-        memcpy(buf+iovlen, data, datalen);
-
-        /* mappedfile_write_iov(&priv->mf, (const struct iovec *)&iorec, */
-        /*                      7, &nbytes); */
-
-        ret = mappedfile_write(&priv->mf, (void *)buf, buflen, &nbytes);
+        /* Get the current mappedfile size */
+        ret = mappedfile_size(&priv->mf, &mfsize);
         if (ret) {
-                fprintf(stderr, "Error writing record");
+                fprintf(stderr, "Could not get mappedfile size\n");
+                goto done;
+        }
+
+        /* write key buffer */
+        ret = mappedfile_write(&priv->mf, (void *)keybuf, keybuflen, &nbytes);
+        if (ret) {
+                fprintf(stderr, "Error writing key\n");
                 ret = SDB_IOERROR;
                 goto done;
         }
 
-        /* TODO; assert(bytes_written == bytes); */
+        /* assert(nbytes == keybuflen); */
+
+        /* write value buffer */
+        ret = mappedfile_write(&priv->mf, (void *)valbuf, valbuflen, &nbytes);
+        if (ret) {
+                fprintf(stderr, "Error writing key\n");
+                ret = SDB_IOERROR;
+                goto done;
+        }
+
+        /* assert(nbytes == valbuflen); */
+
+        /* If we failed writing the value buffer, then restore the db file to
+         * the original size we had before updating */
+        if (ret != SDB_OK) {
+                mappedfile_truncate(&priv->mf, mfsize);
+        }
 
         /* Flush the change to disk */
         ret = mappedfile_flush(&priv->mf);
@@ -461,13 +511,12 @@ static int zs_write_keyval_record(struct zsdb_priv *priv,
                 goto done;
         }
 
-        fprintf(stderr, "%zu bytes created. %zu bytes written.\n",
-                iovlen, nbytes);
 done:
-        xfree(buf);
+        xfree(keybuf);
+        xfree(valbuf);
+
         return ret;
 }
-
 
 static int is_zsdb_dir(struct zsdb_priv *priv)
 {
