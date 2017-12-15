@@ -21,7 +21,7 @@ TOOL_HDRS = 	\
 	cmds.h 	\
 	$(NULL)
 
-LIBS=-luuid
+LIBS=
 
 DBTOOL=skiplistdb
 
