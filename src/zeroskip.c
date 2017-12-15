@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <uuid/uuid.h>
+#include <zlib.h>
 
 
 #define ALIGN64(x) (((x) + 7ULL) & ~7ULL)
@@ -265,13 +266,21 @@ static int zs_write_header(struct zsdb_priv *priv)
         int ret = SDB_OK;
         struct zs_header hdr;
         size_t nbytes;
+        uint32_t crc;
+
+        crc = crc32(0L, Z_NULL, 0);
 
         hdr.signature = hton64(priv->header.signature);
         hdr.version = htonl(priv->header.version);
         memcpy(hdr.uuid, priv->header.uuid, sizeof(uuid_t));
         hdr.startidx = htonl(priv->header.startidx);
         hdr.endidx = htonl(priv->header.endidx);
-        hdr.crc32 = htonl(priv->header.crc32);
+
+        /* compute the crc32 of the the fields of the header minus the
+           crc32 field */
+        crc = crc32(crc, (void *)&priv->header,
+                    sizeof(priv->header) - sizeof(priv->header.crc32));
+        hdr.crc32 = htonl(crc);
 
         ret = mappedfile_write(&priv->mf, (void *)&hdr, sizeof(hdr), &nbytes);
         if (ret) {
@@ -302,8 +311,9 @@ done:
 static int check_zsdb_header(struct zsdb_priv *priv)
 {
         size_t mfsize;
-        struct zs_header *hdr;
+        struct zs_header *phdr, hdr;
         uint32_t version;
+        uint32_t crc;
 
         if (priv->mf->fd < 0)
                 return SDB_ERROR;
@@ -314,14 +324,15 @@ static int check_zsdb_header(struct zsdb_priv *priv)
                 return SDB_INVALID_DB;
         }
 
-        hdr = (struct zs_header *)priv->mf->ptr;
+        phdr = (struct zs_header *)priv->mf->ptr;
 
-        if (hdr->signature != hton64(ZS_HDR_SIGNATURE)) {
+        if (phdr->signature != hton64(ZS_HDR_SIGNATURE)) {
                 fprintf(stderr, "Invalid Zeroskip DB!\n");
                 return SDB_INVALID_DB;
         }
+        hdr.signature = ntoh64(phdr->signature);
 
-        version = ntohl(hdr->version);
+        version = ntohl(phdr->version);
 
         if (version == 1) {
                 fprintf(stderr, "Valid zeroskip DB file. Version: %d\n", version);
@@ -329,8 +340,21 @@ static int check_zsdb_header(struct zsdb_priv *priv)
                 fprintf(stderr, "Invalid zeroskip DB version.\n");
                 return SDB_INVALID_DB;
         }
+        hdr.version = version;
 
         /* XXX: Check crc32, Assign uuid, startidx and endidx */
+        memcpy(hdr.uuid, phdr->uuid, sizeof(uuid_t));
+        hdr.startidx = ntohl(phdr->startidx);
+        hdr.endidx = ntohl(phdr->endidx);
+        hdr.crc32 = ntohl(phdr->crc32);
+
+        crc = crc32(0L, Z_NULL, 0);
+        crc = crc32(crc, (void *)&hdr, sizeof(hdr) - sizeof(uint32_t));
+
+        if (crc != hdr.crc32) {
+                fprintf(stderr, "checksum failed for zeroskip header.\n");
+                return SDB_INVALID_DB;
+        }
 
         return SDB_OK;
 }
@@ -835,6 +859,7 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
         priv->header.version = ZS_HDR_VERSION;
         priv->header.startidx = 0;
         priv->header.endidx = 0;
+        priv->header.crc32 = 0;
 
         /* initilalize fields in priv */
         cstring_addstr(&priv->dbdir, dbdir);
