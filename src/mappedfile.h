@@ -24,6 +24,9 @@ struct mappedfile {
         char *filename;
         int fd;
         unsigned char *ptr;
+        unsigned int is_dirty:1;
+        unsigned int compute_crc;
+        uint32_t crc32;
         size_t size;
         size_t offset;
         uint32_t flags;
@@ -38,19 +41,25 @@ enum {
         MAPPEDFILE_RW_CR  = (MAPPEDFILE_RW | MAPPEDFILE_CREATE),
 };
 
-int mappedfile_open(const char *fname, uint32_t flags,
-                    struct mappedfile **mfp);
-int mappedfile_close(struct mappedfile **mfp);
-int mappedfile_read(struct mappedfile **mfp, void *obuf, size_t obufsize,
-                    size_t *nbytes);
-int mappedfile_write(struct mappedfile **mfp, void *ibuf, size_t ibufsize,
-                     size_t *nbytes);
-int mappedfile_write_iov(struct mappedfile **mfp, const struct iovec *iov,
-                         unsigned int iov_cnt, size_t *nbytes);
-int mappedfile_size(struct mappedfile **mfp, size_t *psize);
-int mappedfile_truncate(struct mappedfile **mfp, size_t len);
-int mappedfile_flush(struct mappedfile **mfp);
-int mappedfile_seek(struct mappedfile **mfp, size_t offset, size_t *newoffset);
+extern int mappedfile_open(const char *fname, uint32_t flags,
+                           struct mappedfile **mfp);
+extern int mappedfile_close(struct mappedfile **mfp);
+extern int mappedfile_read(struct mappedfile **mfp, void *obuf,
+                           size_t obufsize, size_t *nbytes);
+extern int mappedfile_write(struct mappedfile **mfp, void *ibuf,
+                            size_t ibufsize, size_t *nbytes);
+extern int mappedfile_write_iov(struct mappedfile **mfp,
+                                const struct iovec *iov,
+                                unsigned int iov_cnt,
+                                size_t *nbytes);
+extern int mappedfile_size(struct mappedfile **mfp, size_t *psize);
+extern int mappedfile_truncate(struct mappedfile **mfp, size_t len);
+extern int mappedfile_flush(struct mappedfile **mfp);
+extern int mappedfile_seek(struct mappedfile **mfp, size_t offset,
+                           size_t *newoffset);
+
+extern void crc32_begin(struct mappedfile **mfp);
+extern uint32_t crc32_end(struct mappedfile **mfp);
 
 CPP_GUARD_END
 

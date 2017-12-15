@@ -15,17 +15,18 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <unistd.h>
+#include <zlib.h>
 
 #include "mappedfile.h"
 #include "util.h"
 
 
-static struct mappedfile mf_init = {"", -1, MAP_FAILED, -1, -1, 0};
+static struct mappedfile mf_init = {"", -1, MAP_FAILED, 0, 0, 0, -1, -1, 0};
 
 #define OPEN_MODE 0644
 
@@ -238,6 +239,10 @@ int mappedfile_write(struct mappedfile **mfp, void *ibuf, size_t ibufsize,
 
         if (nbytes)
                 *nbytes = ibufsize;
+
+        /* compute CRC32 */
+        if (mf->compute_crc)
+                mf->crc32 = crc32(mf->crc32, ibuf, ibufsize);
 
         return 0;
 }
@@ -455,3 +460,17 @@ int mappedfile_seek(struct mappedfile **mfp, size_t offset, size_t *newoffset)
 
         return 0;
 }
+
+
+void crc32_begin(struct mappedfile **mfp)
+{
+        (*mfp)->crc32 = crc32(0L, Z_NULL, 0);
+        (*mfp)->compute_crc = 1;
+}
+
+uint32_t crc32_end(struct mappedfile **mfp)
+{
+        (*mfp)->compute_crc = 0;
+        return (*mfp)->crc32;
+}
+
