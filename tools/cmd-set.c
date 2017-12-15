@@ -74,6 +74,11 @@ int cmd_set(int argc, char **argv, const char *progname)
                 goto fail1;
         }
 
+        if (skiplistdb_commit(db, &tid) != SDB_OK) {
+                fprintf(stderr, "Could not commit record.\n");
+                goto fail1;
+        }
+
         if (skiplistdb_close(db) != SDB_OK) {
                 fprintf(stderr, "Could not close skiplist DB.\n");
                 goto fail1;

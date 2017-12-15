@@ -542,6 +542,71 @@ done:
         return ret;
 }
 
+static int zs_write_commit_record(struct zsdb_priv *priv)
+{
+        int ret = SDB_OK;
+        size_t buflen, nbytes;
+        unsigned char buf[24];
+        uint32_t crc;
+
+
+        assert(priv);
+
+        memset(&buf, 0, sizeof(buf));
+
+        if (priv->mf->crc32_data_len > MAX_SHORT_VAL_LEN) {
+                uint32_t lccrc;
+                struct zs_long_commit lc;
+                buflen = sizeof(struct zs_long_commit);
+                /* TODO: create long commit record */
+        } else {
+                uint32_t sccrc;
+                struct zs_short_commit sc;
+
+                sc.type = REC_TYPE_SHORT_COMMIT;
+                sc.length = priv->mf->crc32_data_len;
+                sc.crc32 = 0;
+
+                /* Compute CRC32 */
+                sccrc = crc32(0L, Z_NULL, 0);
+                sccrc = crc32(sccrc, (void *)&sc,
+                              sizeof(struct zs_short_commit) - sizeof(uint32_t));
+                crc = crc32_end(&priv->mf);
+                sc.crc32 = crc32_combine(crc, sccrc, sizeof(uint32_t));
+
+                /* type */
+                buf[0] = sc.type;
+                /* length TODO: Make it 24 bits */
+                *((uint32_t *)(buf + sizeof(uint8_t))) = hton32(sc.length);
+                /* CRC32 */
+                *((uint32_t *)(buf + sizeof(uint8_t) + sizeof(uint32_t))) =
+                        hton32(sc.crc32);
+
+                buflen = sizeof(struct zs_short_commit);
+        }
+
+        ret = mappedfile_write(&priv->mf, (void *)buf, buflen, &nbytes);
+        if (ret) {
+                fprintf(stderr, "Error writing commit record.\n");
+                ret = SDB_IOERROR;
+                goto done;
+        }
+
+        /* assert(nbytes == buflen); */
+
+        /* Flush the change to disk */
+        ret = mappedfile_flush(&priv->mf);
+        if (ret) {
+                /* TODO: try again before giving up */
+                fprintf(stderr, "Error flushing commit record to disk.\n");
+                ret = SDB_IOERROR;
+                goto done;
+        }
+
+done:
+        return ret;
+}
+
 static int is_zsdb_dir(struct zsdb_priv *priv)
 {
         return 0;
@@ -1016,7 +1081,7 @@ static int zs_add(struct skiplistdb *db,
            struct txn **tid)
 {
         int ret = SDB_OK;
-         struct zsdb_priv *priv;
+        struct zsdb_priv *priv;
 
         assert(db);
         assert(key);
@@ -1028,9 +1093,13 @@ static int zs_add(struct skiplistdb *db,
         if (!priv->is_open)
                 return SDB_ERROR;
 
+        /* Start computing the crc32. Will end when the transaction is
+           committed */
+        crc32_begin(&priv->mf);
+
         ret = zs_write_keyval_record(priv, key, keylen, data, datalen);
 
-        return SDB_OK;
+        return ret;
 }
 
 static int zs_remove(struct skiplistdb *db,
@@ -1050,10 +1119,23 @@ static int zs_store(struct skiplistdb *db _unused_,
         return SDB_NOTIMPLEMENTED;
 }
 
-static int zs_commit(struct skiplistdb *db _unused_,
+static int zs_commit(struct skiplistdb *db,
                      struct txn **tid _unused_)
 {
-        return SDB_NOTIMPLEMENTED;
+        int ret = SDB_OK;
+        struct zsdb_priv *priv;
+
+        assert(db);
+        assert(db->priv);
+
+        priv = db->priv;
+
+        if (!priv->is_open)
+                return SDB_ERROR;
+
+        ret = zs_write_commit_record(priv);
+
+        return ret;
 }
 
 static int zs_abort(struct skiplistdb *db _unused_,

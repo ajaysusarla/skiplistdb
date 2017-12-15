@@ -26,7 +26,7 @@
 #include "util.h"
 
 
-static struct mappedfile mf_init = {"", -1, MAP_FAILED, 0, 0, 0, -1, -1, 0};
+static struct mappedfile mf_init = {"", -1, MAP_FAILED, 0, 0, 0, 0, -1, -1, 0};
 
 #define OPEN_MODE 0644
 
@@ -241,8 +241,10 @@ int mappedfile_write(struct mappedfile **mfp, void *ibuf, size_t ibufsize,
                 *nbytes = ibufsize;
 
         /* compute CRC32 */
-        if (mf->compute_crc)
+        if (mf->compute_crc) {
                 mf->crc32 = crc32(mf->crc32, ibuf, ibufsize);
+                mf->crc32_data_len += ibufsize;
+        }
 
         return 0;
 }
@@ -466,11 +468,13 @@ void crc32_begin(struct mappedfile **mfp)
 {
         (*mfp)->crc32 = crc32(0L, Z_NULL, 0);
         (*mfp)->compute_crc = 1;
+        (*mfp)->crc32_data_len = 0;
 }
 
 uint32_t crc32_end(struct mappedfile **mfp)
 {
         (*mfp)->compute_crc = 0;
+        (*mfp)->crc32_data_len = 0;
         return (*mfp)->crc32;
 }
 
