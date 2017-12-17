@@ -7,10 +7,11 @@
  *
  */
 
+#include "btree.h"
+#include "cstring.h"
+#include "mappedfile.h"
 #include "util.h"
 #include "zeroskip.h"
-#include "mappedfile.h"
-#include "cstring.h"
 
 #include <arpa/inet.h>
 #include <assert.h>
@@ -231,6 +232,8 @@ struct zsdb_priv {
         struct mappedfile *mf;
         struct mappedfile **mfs;
         cstring mappedfilename;
+
+        struct btree *btree;
 
         struct zs_header header;
         struct dotzsdb dothdr;
@@ -1248,6 +1251,8 @@ struct skiplistdb * zeroskip_new(void)
                 goto done;
         }
 
+        priv->btree = btree_new(NULL, NULL);
+
         db->priv = priv;
 done:
         return db;
@@ -1263,6 +1268,8 @@ void zeroskip_free(struct skiplistdb *db)
                 cstring_release(&priv->dbdir);
                 cstring_release(&priv->mappedfilename);
                 cstring_release(&priv->dotzsdbfname);
+
+                btree_free(priv->btree);
 
                 xfree(priv);
 
