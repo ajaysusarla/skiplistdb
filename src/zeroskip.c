@@ -820,36 +820,57 @@ static int init_db_dir(struct skiplistdb *db)
         return ret;
 }
 
-static int zs_read_record(struct zsdb_priv *priv, struct zs_rec *rec,
-                          size_t offset)
+/* zs_dump_record():
+ * Should always be called a read lock
+ */
+static int zs_dump_record(struct zsdb_priv *priv, size_t *offset)
 {
         unsigned char *bptr = priv->mf->ptr;
-        unsigned char *fptr = bptr + offset;
+        unsigned char *fptr = bptr + *offset;
+        enum record_t rectype;
 
-        memset(rec, 0, sizeof(struct zs_rec));
 
-        rec->type = fptr[0];
+        rectype = fptr[0];
 
-        switch(rec->type) {
+        switch(rectype) {
         case REC_TYPE_SHORT_KEY:
-                printf("SHORT KEY\n");
-                rec->rec.skey.length = ntoh16(*((uint16_t *)(fptr + 1)));
-                printf(" Length: %d\n", rec->rec.skey.length);
+        {
+                uint16_t len = ntoh16(*((uint16_t *)(fptr + 1)));
+                uint64_t val_offset = ntoh64(*((uint64_t *)(fptr + 3)));
+                unsigned char *data = (unsigned char *)(uint8_t *)(fptr + 11);
+                int i;
+                printf(" key: ");
+                for (i = 0; i < len; i++) {
+                        printf("%c", data[i]);
+                }
+                printf(" (%d)\n", len);
+                *offset = *offset + sizeof(struct zs_short_key) + roundup64(len);
+        }
                 break;
         case REC_TYPE_LONG_KEY:
                 printf("LONG KEY\n");
                 break;
         case REC_TYPE_SHORT_VALUE:
-                printf("SHORT KEY\n");
+        {
+                uint32_t len = ntoh32(*((uint32_t *)(fptr + 1)));
+                unsigned char *data = (unsigned char *)(uint8_t *)(fptr + 5);
+                uint32_t i;
+                printf(" val: ");
+                for (i = 0; i < len; i++) {
+                        printf("%c", data[i]);
+                }
+                printf(" (%d)\n\n", len);
+                *offset = *offset + sizeof(struct zs_short_val) + roundup64(len);
+        }
                 break;
         case REC_TYPE_LONG_VALUE:
                 printf("LONG VALUE\n");
                 break;
         case REC_TYPE_SHORT_COMMIT:
-                printf("SHORT COMMIT\n");
+                *offset = *offset + sizeof(struct zs_short_commit);
                 break;
         case REC_TYPE_LONG_COMMIT:
-                printf("LONG COMMIT\n");
+                *offset = *offset + sizeof(struct zs_long_commit);
                 break;
         case REC_TYPE_2ND_HALF_COMMIT:
                 break;
@@ -1153,7 +1174,6 @@ static int zs_dump(struct skiplistdb *db,
         int ret = SDB_OK;
         struct zsdb_priv *priv;
         size_t dbsize = 0, offset = ZS_HDR_SIZE;
-        struct zs_rec record;
 
         assert(db);
         assert(db->priv);
@@ -1173,12 +1193,13 @@ static int zs_dump(struct skiplistdb *db,
                 return SDB_IOERROR;
         }
 
-        zs_read_record(priv, &record, offset);
+        printf("Records:\n");
+        while (offset < dbsize) {
+                size_t recsize = 0;
+                zs_dump_record(priv, &offset);
+        }
 
-        /* while (offset < dbsize) { */
-        /*         size_t recsize = 0; */
-        /* } */
-
+        printf("----\n");
         return ret;
 }
 
