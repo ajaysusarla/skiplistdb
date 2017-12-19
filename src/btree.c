@@ -654,11 +654,11 @@ struct record * record_new(unsigned char *key, size_t keylen,
 
         rec = xmalloc(sizeof(struct record));
 
-        rec->key = xmalloc(sizeof(unsigned char) * keylen);
+        rec->key = xmalloc(sizeof(unsigned char) * keylen + 1);
         memcpy(rec->key, key, keylen);
         rec->keylen = keylen;
 
-        rec->val = xmalloc(sizeof(unsigned char) * vallen);
+        rec->val = xmalloc(sizeof(unsigned char) * vallen + 1);
         memcpy(rec->val, val, vallen);
         rec->vallen = vallen;
 
