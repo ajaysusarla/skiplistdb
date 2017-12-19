@@ -73,6 +73,8 @@ static void btree_node_free(struct btree_node *node, struct btree *btree)
                 }
                 btree_node_free(node->branches[count], btree);
         }
+
+        xfree(node);
 }
 
 /* branch_begin()
