@@ -118,6 +118,21 @@ static inline void cstring_addstr(cstring *cstr, const char *str)
  */
 void cstring_dup(cstring *src, cstring *dest);
 
+/* cstring_ltrim():
+ * trim leading spaces from a cstring
+ */
+void cstring_ltrim(cstring *cstr);
+
+/* cstring_rtrim():
+ * trim trailing spaces from a cstring
+ */
+void cstring_rtrim(cstring *cstr);
+
+/* cstring_trim():
+ * trim leading and trailing spaces from a cstring
+ */
+void cstring_trim(cstring *cstr);
+
 CPP_GUARD_END
 
 #endif  /* _CSTRING_H_ */

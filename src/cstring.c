@@ -13,6 +13,8 @@
 #include "cstring.h"
 #include "util.h"
 
+#include <ctype.h>
+
 char cstring_base[1];
 
 void cstring_grow(cstring *cstr, size_t len)
@@ -85,4 +87,31 @@ void cstring_dup(cstring *src, cstring *dest)
         cstring_grow(dest ,src->len);
         memcpy(dest->buf + dest->len, src->buf, src->len);
         cstring_setlen(dest, dest->len + src->len);
+}
+
+void cstring_ltrim(cstring *cstr)
+{
+        char *p = cstr->buf;
+
+        while (cstr->len > 0 && isspace(*p)) {
+                p++;
+                cstr->len--;
+        }
+
+        memmove(cstr->buf, p, cstr->len);
+        cstr->buf[cstr->len] = '\0';
+}
+
+void cstring_rtrim(cstring *cstr)
+{
+        while (cstr->len > 0 && isspace(cstr->buf[cstr->len - 1]))
+                cstr->len--;
+
+        cstr->buf[cstr->len] = '\0';
+}
+
+void cstring_trim(cstring *cstr)
+{
+        cstring_rtrim(cstr);
+        cstring_ltrim(cstr);
 }
