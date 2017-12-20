@@ -34,6 +34,65 @@ typedef enum {
         TRUE
 } bool_t;
 
+enum {
+        Alpha = 1,
+        UAlpha = 2,
+        LAlpha = 4,
+        Digit = 8,
+        TZSign = 16,
+};
+
+static const long charset[257] = {
+        ['0' + 1 ... '9' + 1] = Digit,
+        ['A' + 1 ... 'Z' + 1] = Alpha | UAlpha,
+        ['a' + 1 ... 'z' + 1] = Alpha | LAlpha,
+        ['+' + 1] = TZSign,
+        ['-' + 1] = TZSign
+};
+
+static inline int to_upper_str_in_place(char **str, int len)
+{
+        int i;
+
+        for (i = 0; i < len; i++) {
+                int c = str[0][i];
+                if (charset[c + 1] & LAlpha)
+                        str[0][i] = str[0][i] - 32;
+        }
+
+        return 1;
+}
+
+static inline int to_lower_str_in_place(char **str, int len)
+{
+        int i;
+
+        for (i = 0; i < len; i++) {
+                int c = str[0][i];
+                if (charset[c + 1] & UAlpha)
+                        str[0][i] = str[0][i] + 32;
+        }
+
+        return 1;
+}
+
+static inline int to_upper(char ch)
+{
+        if (charset[ch + 1] & LAlpha)
+                ch =  ch - 32;
+
+        return ch;
+}
+
+static inline int to_lower(char ch)
+{
+        if (charset[ch + 1] & UAlpha)
+                ch = ch + 32;
+
+        return ch;
+}
+
+
 void *xmalloc(size_t size);
 void *xrealloc(void *ptr, size_t size);
 void *xcalloc(size_t nmemb, size_t size);
