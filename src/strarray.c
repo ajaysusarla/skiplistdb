@@ -70,6 +70,35 @@ void str_array_remove(struct str_array *arr)
         arr->count--;
 }
 
+/* str_array_from_strsplit():
+ * Creates an str_array by splitting a string by some delimiter.
+ */
+void str_array_from_strsplit(struct str_array *arr, const char *str,
+                             size_t slen, char delim)
+{
+        size_t len = slen;
+        const char *p = str;
+
+        str_array_clear(arr);
+
+        while (len) {
+                int tlen = len;
+                const char *end = memchr(str, delim, len);
+                char *s;
+                if (end)
+                        tlen = end - str + 1;
+
+                s = xmalloc(sizeof(char) * tlen);
+                memset(s, 0, tlen);
+                memcpy(s, p, tlen - 1);
+                str_array_add(arr, s);
+                xfree(s);
+
+                p += tlen;
+                len -= tlen;
+        }
+}
+
 /* str_array_detach():
  * Returns the data, caller needs to free.
  */
