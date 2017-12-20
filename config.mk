@@ -65,8 +65,8 @@ DEBUG = -g
 endif
 
 ## Compiler options
-SDB_EXTRA_CFLAGS = -mtune=native -O3
-SDB_CFLAGS=-std=c99 -pedantic -Wall -W -Wno-missing-field-initializers -O0 $(CFLAGS) $(DEBUG) $(ENDIAN) $(OSFLAGS)
+SDB_EXTRA_CFLAGS = -mtune=native -O3 -pedantic
+SDB_CFLAGS=-std=c99 -Wextra -Wall -W -Wno-missing-field-initializers -O0 $(CFLAGS) $(DEBUG) $(ENDIAN) $(OSFLAGS)
 SDB_LDFLAGS=$(LDFLAGS) $(DEBUG) -lz -luuid
 SDB_LIBS=
 DEBUG=-g -ggdb
