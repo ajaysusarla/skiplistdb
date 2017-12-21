@@ -106,49 +106,18 @@ enum record_t {
         REC_TYPE_UNUSED              = 0x80,
 };
 
-#if 0
-struct zs_short_key {
-        uint16_t length;
-        uint64_t val_offset : 40;
-        uint8_t  *data;
-        uint8_t  padding[7];
-
-};
-
-struct zs_long_key {
-        uint8_t  padding1[7];
+struct zs_key {
+        uint8_t type;
         uint64_t length;
         uint64_t val_offset;
-        uint8_t  *data;
-        uint8_t  padding2[7];
+        uint8_t *data;
 };
 
-struct zs_short_val {
-        uint32_t length : 24;
-        uint8_t  *data;
-        uint8_t  padding[3];
-};
-
-struct zs_long_val {
-        uint8_t  padding1[3];
+struct zs_val {
+        uint8_t type;
         uint64_t length;
-        uint8_t  *data;
-        uint8_t  padding2[3];
+        uint8_t *data;
 };
-
-struct zs_short_commit {
-        uint32_t length : 24;
-        uint32_t crc32;
-};
-
-struct zs_long_commit {
-        uint8_t  padding1[7];
-        uint64_t length;
-        uint8_t  type;
-        uint8_t  padding2[3];
-        uint32_t crc32;
-};
-#endif
 
 struct zs_short_key {
         uint8_t  type;
@@ -360,16 +329,6 @@ static int check_zsdb_header(struct zsdb_priv *priv)
         }
 
         return SDB_OK;
-}
-
-static inline uint64_t get40msb(uint64_t num)
-{
-        register uint32_t u;
-        register uint16_t l;
-        u = num >> 32;
-        l = (uint16_t) num;
-
-        return u | ((uint64_t)l  << 32);
 }
 
 

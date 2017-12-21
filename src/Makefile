@@ -4,6 +4,7 @@
 # Object files
 SDB_LIBOBJS =          	\
 	btree.o		\
+	config.o	\
 	cstring.o   	\
 	htable.o	\
 	log.o 		\
@@ -18,6 +19,7 @@ SDB_LIBOBJS =          	\
 # Headers
 SDB_HDRS =           	\
 	btree.h		\
+	config.h	\
 	cstring.h   	\
 	htable.h	\
 	log.h		\
