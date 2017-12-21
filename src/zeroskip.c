@@ -392,7 +392,9 @@ static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
                 type = REC_TYPE_LONG_KEY;
         }
 
-        finalkeylen = roundup64(keylen);
+        finalkeylen = roundup64(keylen * 8);
+        finalkeylen /= 8;
+
         kbuflen += finalkeylen;
 
         kbuf = xcalloc(1, kbuflen);
@@ -446,7 +448,9 @@ static int zs_prepare_val_buf(unsigned char *val, size_t vallen,
                 type = REC_TYPE_LONG_VALUE;
         }
 
-        finalvallen = roundup64(vallen);
+        finalvallen = roundup64(vallen * 8);
+        finalvallen /= 8;
+
         vbuflen += finalvallen;
 
         vbuf = xcalloc(1, vbuflen);
