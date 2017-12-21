@@ -807,7 +807,8 @@ static int zs_dump_record(struct zsdb_priv *priv, size_t *offset)
                         printf("%c", data[i]);
                 }
                 printf(" (%d)\n", len);
-                *offset = *offset + sizeof(struct zs_short_key) + roundup64(len);
+                *offset = *offset + sizeof(struct zs_short_key) +
+                        (roundup64(len * 8) / 8);
         }
                 break;
         case REC_TYPE_LONG_KEY:
@@ -823,7 +824,8 @@ static int zs_dump_record(struct zsdb_priv *priv, size_t *offset)
                         printf("%c", data[i]);
                 }
                 printf(" (%d)\n\n", len);
-                *offset = *offset + sizeof(struct zs_short_val) + roundup64(len);
+                *offset = *offset + sizeof(struct zs_short_val) +
+                        (roundup64(len * 8) / 8);
         }
                 break;
         case REC_TYPE_LONG_VALUE:
