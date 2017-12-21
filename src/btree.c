@@ -438,13 +438,11 @@ unsigned int btree_memcmp(unsigned char *key, size_t keylen,
                           unsigned int count, int *found)
 {
         unsigned int start = 0;
-        unsigned int pos = 0;
         unsigned char *k = (unsigned char *) key;
 
         while (count) {
                 unsigned int middle = count >> 1;
-                pos = start + middle;
-                unsigned char* b = (unsigned char*)recs[pos]->key;
+                unsigned char* b = (unsigned char*)recs[start + middle]->key;
 
                 int c = memcmp(k, b, keylen);
                 if (c == 0)
@@ -460,13 +458,12 @@ unsigned int btree_memcmp(unsigned char *key, size_t keylen,
                 continue;
         equals:
                 *found = 1;
-                break;
         lessthan:
                 count = middle;
                 continue;
         }
 
-        return pos;
+        return start;
 }
 
 int btree_destroy(struct record *record,
