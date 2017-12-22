@@ -331,6 +331,43 @@ static int check_zsdb_header(struct zsdb_priv *priv)
         return SDB_OK;
 }
 
+static inline void copy_uint8_t(unsigned char *buf, uint8_t value)
+{
+        uint8_t n_value = hton8(value);
+        memcpy(buf, &n_value, sizeof(uint8_t));
+}
+
+static inline void copy_uint16_t(unsigned char *buf, uint16_t value)
+{
+        uint16_t n_value = hton16(value);
+        memcpy(buf, &n_value, sizeof(uint16_t));
+}
+
+static inline void copy_uint24_t(unsigned char *buf, uint32_t value)
+{
+        uint32_t n_value = hton32(0 << 24 | value);
+        memcpy(buf, &n_value, sizeof(uint32_t)); /* FIXME: Need to copy 3 bytes */
+}
+
+static inline void copy_uint32_t(unsigned char *buf, uint32_t value)
+{
+        uint32_t n_value = hton32(value);
+        memcpy(buf, &n_value, sizeof(uint32_t));
+}
+
+static inline void copy_uint40_t(unsigned char *buf, uint64_t value)
+{
+        uint64_t n_value = hton64(0L << 40 | value);
+        memcpy(buf, &n_value, sizeof(uint64_t)); /* FIXME: Need to copy 5 bytes */
+}
+
+static inline void copy_uint64_t(unsigned char *buf, uint64_t value)
+{
+        uint64_t n_value = hton64(value);
+        memcpy(buf, &n_value, sizeof(uint64_t));
+}
+}
+
 
 /* Caller should free buf
  */
