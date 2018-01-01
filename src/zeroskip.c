@@ -106,6 +106,9 @@ enum record_t {
         REC_TYPE_UNUSED              = 0x80,
 };
 
+#define ZS_KEY_BASE_REC_SIZE 192
+#define ZS_VAL_BASE_REC_SIZE 128
+
 struct zs_key {
         uint8_t type;
         uint64_t length;
@@ -366,8 +369,6 @@ static inline void copy_uint64_t(unsigned char *buf, uint64_t value)
         uint64_t n_value = hton64(value);
         memcpy(buf, &n_value, sizeof(uint64_t));
 }
-}
-
 
 /* Caller should free buf
  */
@@ -379,12 +380,12 @@ static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
         size_t kbuflen, finalkeylen, pos;
         enum record_t type;
 
+        kbuflen = ZS_KEY_BASE_REC_SIZE;
+
         /* Minimum buf size */
         if (keylen <= MAX_SHORT_KEY_LEN) {
-                kbuflen = sizeof(struct zs_short_key);
                 type = REC_TYPE_SHORT_KEY;
         } else {
-                kbuflen = sizeof(struct zs_long_key);
                 type = REC_TYPE_LONG_KEY;
         }
 
@@ -435,12 +436,11 @@ static int zs_prepare_val_buf(unsigned char *val, size_t vallen,
         size_t vbuflen, finalvallen, pos;
         enum record_t type;
 
+        vbuflen = ZS_VAL_BASE_REC_SIZE;
         /* Minimum buf size */
         if (vallen <= MAX_SHORT_VAL_LEN) {
-                vbuflen = sizeof(struct zs_short_val);
                 type = REC_TYPE_SHORT_VALUE;
         } else {
-                vbuflen = sizeof(struct zs_long_val);
                 type = REC_TYPE_LONG_VALUE;
         }
 
