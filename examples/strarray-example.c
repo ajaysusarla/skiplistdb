@@ -15,7 +15,7 @@ int main(int argc __attribute__((unused)), char **argv)
         /* Initialise */
         str_array_init(&arr);
 
-        if (get_filenames_with_matching_prefix(argv + 1, zsprefix, &arr) != 0) {
+        if (get_filenames_with_matching_prefix_abs(argv + 1, zsprefix, &arr) != 0) {
                 perror("get_filenames:");
                 goto done;
         }
