@@ -167,7 +167,7 @@ int file_rename(const char *oldpath, const char *newpath)
  * appropriately.
  */
 int get_filenames_with_matching_prefix(char *const path[], const char *prefix,
-                                       struct str_array *arr)
+                                       struct str_array *arr, int full_path)
 {
         FTS *ftsp = NULL;
         FTSENT *fp = NULL;
@@ -206,7 +206,12 @@ int get_filenames_with_matching_prefix(char *const path[], const char *prefix,
 
                 bname = basename(fp->fts_path);
 
-                snprintf(sbuf, PATH_MAX, "%s/%s", *path ? *path : buf, bname);
+                if (full_path)
+                        snprintf(sbuf, PATH_MAX, "%s/%s/%s", buf,
+                                 *path ? *path : buf, bname);
+                else
+                        snprintf(sbuf, PATH_MAX, "%s/%s", *path ? *path : buf, bname);
+
                 if (!prefix)
                         add = 1;
                 else {

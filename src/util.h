@@ -239,7 +239,28 @@ int file_rename(const char *oldpath, const char *newpath);
 int xmkdir(const char *path, mode_t mode);
 
 int get_filenames_with_matching_prefix(char *const path[], const char *prefix,
-                                       struct str_array *arr);
+                                       struct str_array *arr, int full_path);
+
+/* Return filenames with absolute paths */
+static inline int get_filenames_with_matching_prefix_abs(char *const path[],
+                                                         const char *prefix,
+                                                         struct str_array *arr)
+{
+        return get_filenames_with_matching_prefix(path, prefix,
+                                                  arr, 1);
+
+}
+
+/* Return filenames with relative paths */
+static inline int get_filenames_with_matching_prefix_rel(char *const path[],
+                                                         const char *prefix,
+                                                         struct str_array *arr)
+{
+        return get_filenames_with_matching_prefix(path, prefix,
+                                                  arr, 0);
+
+}
+
 
 /* Time functions */
 long long time_in_us(void);
