@@ -39,7 +39,7 @@
 
 
 /* This is the size of the unparssed uuid string */
-const size_t UUID_STR_LEN = 36;
+const size_t UUID_STRLEN = 36;
 
 /*
  * Zeroskip db files have the following file naming scheme:
@@ -718,7 +718,7 @@ static int create_dot_zsdb(struct zsdb_priv *priv)
         unsigned char stackbuf[DOTZSDB_SZ];
         uint64_t signature;         /* Signature */
         uuid_t uuid;
-        char uuidstr[UUID_STR_LEN];
+        char uuidstr[UUID_STRLEN];
         unsigned char *sptr;
         struct mappedfile *mf;
         int ret = SDB_OK;
@@ -852,7 +852,7 @@ static enum db_ftype_t interpret_dbfile_name(const char *str, size_t len)
         if (!p)
                 goto done;
 
-        idx = p + ZS_FNAME_PREFIX_LEN + UUID_STR_LEN;
+        idx = p + ZS_FNAME_PREFIX_LEN + UUID_STRLEN;
 
         /* We should have atleast 1 index or a max of 2 */
         if (*idx++ == '-') {
@@ -921,7 +921,7 @@ static int setup_db_dir(struct skiplistdb *db)
 
         if (stat(priv->dbdir.buf, &sb) == -1) {        /* New Zeroskip DB */
                 uuid_t uuid;
-                char uuidstr[UUID_STR_LEN + 1];
+                char uuidstr[UUID_STRLEN + 1];
 
                 fprintf(stderr, "Creating a new DB.\n");
                 /* Create the dbdir */
@@ -965,7 +965,7 @@ static int setup_db_dir(struct skiplistdb *db)
         cstring_dup(&priv->dbdir, &priv->factive.fname);
         cstring_addch(&priv->factive.fname, '/');
         cstring_addstr(&priv->factive.fname, ZS_FNAME_PREFIX);
-        cstring_add(&priv->factive.fname, priv->dotzsdb.uuidstr, UUID_STR_LEN);
+        cstring_add(&priv->factive.fname, priv->dotzsdb.uuidstr, UUID_STRLEN);
         cstring_addch(&priv->factive.fname, '-');
         cstring_addstr(&priv->factive.fname, index);
 
