@@ -2,18 +2,20 @@
 -include ../config.mk
 
 # Object files
-SDB_LIBOBJS =          	\
-	btree.o		\
-	config.o	\
-	cstring.o   	\
-	htable.o	\
-	log.o 		\
-	mappedfile.o 	\
-	skiplistdb.o	\
-	strarray.o	\
-	twoskip.o   	\
-	util.o      	\
-	zeroskip.o	\
+SDB_LIBOBJS =          	    \
+	btree.o		    \
+	config.o	    \
+	cstring.o   	    \
+	htable.o	    \
+	log.o 		    \
+	mappedfile.o 	    \
+	skiplistdb.o	    \
+	strarray.o	    \
+	twoskip.o   	    \
+	util.o      	    \
+	zeroskip.o	    \
+	zeroskip-dotzsdb.o  \
+	zeroskip-header.o   \
 	$(NULL)
 
 # Headers
@@ -30,6 +32,7 @@ SDB_HDRS =           	\
 	twoskip.h   	\
 	util.h 	    	\
 	zeroskip.h	\
+	zeroskip-priv.h \
 	$(NULL)
 
 all: clean-ar $(AR_LIB_FILE)

@@ -13,7 +13,7 @@
 #include "strarray.h"
 #include "util.h"
 #include "zeroskip.h"
-
+#include "zeroskip-priv.h"
 #include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>
@@ -31,220 +31,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <uuid/uuid.h>
 #include <zlib.h>
 
 #define ALIGN64(x) (((x) + 7ULL) & ~7ULL)
 #define VALID64(x) (((x) & 7ULL) == 0ULL)
 
-
-/* This is the size of the unparssed uuid string */
-const size_t UUID_STRLEN = 36;
-
-/*
- * Zeroskip db files have the following file naming scheme:
- *   zeroskip-$(UUID)-$(index)                     - for an unpacked file
- *   zeroskip-$(UUID)-$(startindex)-$(endindex)    - for a packed filed
- *
- * The UUID, startindex and endindex values are in the header of each file.
- * The index starts with a 0, for a completely new Zeroskip DB. And is
- * incremented every time a file is finalsed(packed).
- */
-#define ZS_FNAME_PREFIX       "zeroskip-"
-#define ZS_FNAME_PREFIX_LEN   9
-
-/*
- *  Zeroskip on-disk file format:
- *
- *  [Header]([Key|Value]+[Commit])+[Pointers][Commit]
- */
-
-/**
- * The zeroskip header.
- */
-/* Header offsets */
-enum {
-        ZS_HEADER      = 0,
-        ZS_VERSION     = 8,
-        ZS_UUID        = 12,
-        ZS_START_IDX   = 28,
-        ZS_END_IDX     = 32,
-        ZS_CRC32       = 36,
-};
-
-/* Types of files in the DB */
-enum db_ftype_t {
-        DB_FTYPE_ACTIVE,
-        DB_FTYPE_FINALISED,
-        DB_FTYPE_PACKED,
-        DB_FTYPE_UNKNOWN,
-};
-
-/* The contents of the .zsdb file. */
-struct dotzsdb {
-        uint64_t signature;
-        uint32_t curidx;
-        char uuidstr[36];
-};                              /* A total of 48 bytes */
-#define DOTZSDB_FNAME ".zsdb"
-#define DOTZSDB_SZ sizeof(struct dotzsdb)
-
-struct zs_header {
-        uint64_t signature;         /* Signature */
-        uint32_t version;           /* Version Number */
-        uuid_t   uuid;              /* UUID of DB - 128 bits: unsigned char uuid_t[16];*/
-        uint32_t startidx;          /* Start Index of DB range */
-        uint32_t endidx;            /* End Index of DB range */
-        uint32_t crc32;             /* CRC32 of rest of header */
-};
-
-#define ZS_HDR_SIGNATURE 0x5a45524f534b4950 /* "ZEROSKIP" */
-#define ZS_HDR_VERSION   1
-#define ZS_HDR_SIZE      40
-
-/**
- * The zeroskip record[key|value|commit]
- */
-enum record_t {
-        REC_TYPE_SHORT_KEY           = 0x01,
-        REC_TYPE_LONG_KEY            = 0x21,
-        REC_TYPE_SHORT_VALUE         = 0x02,
-        REC_TYPE_LONG_VALUE          = 0x22,
-        REC_TYPE_SHORT_COMMIT        = 0x04,
-        REC_TYPE_LONG_COMMIT         = 0x24,
-        REC_TYPE_2ND_HALF_COMMIT     = 0x08,
-        REC_TYPE_SHORT_FINAL         = 0x10,
-        REC_TYPE_LONG_FINAL          = 0x30,
-        REC_TYPE_HAS_LONG_VALUES     = 0x20,
-        REC_TYPE_DELETED             = 0x40,
-        REC_TYPE_UNUSED              = 0x80,
-};
-
-#define ZS_KEY_BASE_REC_SIZE 192
-#define ZS_VAL_BASE_REC_SIZE 128
-
-struct zs_key {
-        uint8_t type;
-        uint64_t length;
-        uint64_t val_offset;
-        uint8_t *data;
-};
-
-struct zs_val {
-        uint8_t type;
-        uint64_t length;
-        uint8_t *data;
-};
-
-struct zs_short_key {
-        uint8_t  type;
-        uint16_t length;
-        uint64_t val_offset;
-        uint8_t  *data;
-};
-
-struct zs_long_key {
-        uint8_t  type;
-        uint64_t length;
-        uint64_t val_offset;
-        uint8_t  *data;
-};
-
-struct zs_short_val {
-        uint8_t  type;
-        uint32_t length;
-        uint8_t  *data;
-};
-
-struct zs_long_val {
-        uint8_t  type;
-        uint64_t length;
-        uint8_t  *data;
-};
-
-struct zs_short_commit {
-        uint8_t type;
-        uint32_t length;
-        uint32_t crc32;
-};
-
-struct zs_long_commit {
-        uint8_t type1;
-        uint8_t  padding1[7];
-        uint64_t length;
-        uint8_t type2;
-        uint8_t  padding2[3];
-        uint32_t crc32;
-};
-
-#define MAX_SHORT_KEY_LEN 65536
-#define MAX_SHORT_VAL_LEN 16777216
-
-cstring strinit = CSTRING_INIT;
-
-struct zs_rec {
-        uint8_t type;
-        union {
-                struct zs_short_key    skey;
-                struct zs_long_key     lkey;
-                struct zs_short_val    sval;
-                struct zs_long_val     lval;
-                struct zs_short_commit scommit;
-                struct zs_long_commit  lcommit;
-        } rec;
-};
-
-/**
- * Pointers
- */
-struct zs_pointer {
-        uint64_t      num_ptrs;
-        uint64_t      num_shadowed_recs;
-        uint64_t      num_shadowed_bytes;
-        struct zs_rec *key_ptr;
-};
-
-/**
- * Trasaction structure
- **/
-struct txn {
-        int num;
-};
-
-struct zsdb_file {
-        enum db_ftype_t ftype;
-        cstring fname;
-        int is_open;
-        struct mappedfile *mf;
-        struct zs_header header;
-};
-
-struct zsdb_files {
-        struct zsdb_file **fdata;
-        int count;
-};
-
-
-/*
- * zeroskip private data
- */
-struct zsdb_priv {
-        uuid_t uuid;
-        struct dotzsdb dotzsdb;
-
-        struct zsdb_file factive; /* The currently active file */
-        struct zsdb_file fpacked; /* The packed file */
-        struct zsdb_file *ffinalised;
-
-        struct btree *btree;
-
-        cstring dbdir;
-
-        unsigned int is_open:1;
-        unsigned int valid:1;
-
-        size_t end;
-};
 
 /**
  ** Private functions
@@ -302,128 +93,6 @@ static void zsdb_files_clear(struct zsdb_files *files)
         }
 
         zsdb_files_init(files);
-}
-
-/* zs_write_header():
- *  Write the header to a mapped file that is open, the values
- *  of the header are got from f->header. So the caller must ensure
- *  the fields are valid.
- *
- * Return:
- *   This function will return an error if the file isn't open
- *   or if for some reason the write itself failed.
- *   SDB_OK on success.
- */
-static int zs_write_header(struct zsdb_file *f)
-{
-        int ret = SDB_OK;
-        struct zs_header hdr;
-        size_t nbytes;
-        uint32_t crc;
-
-        if (!f->is_open) {
-                return SDB_ERROR;
-        }
-
-        crc =crc32(0L, Z_NULL, 0);
-
-        /* XXX: The copying should be done to an unsigned char buffer */
-        hdr.signature = hton64(f->header.signature);
-        hdr.version = hton32(f->header.version);
-        memcpy(hdr.uuid, f->header.uuid, sizeof(uuid_t));
-        hdr.startidx = htonl(f->header.startidx);
-        hdr.endidx = htonl(f->header.endidx);
-
-        /* compute the crc32 of the the fields of the header minus the
-           crc32 field */
-        crc = crc32(crc, (void *)&f->header,
-                    sizeof(f->header) - sizeof(f->header.crc32));
-        hdr.crc32 = htonl(crc);
-
-        ret = mappedfile_write(&f->mf, (void *)&hdr, sizeof(hdr), &nbytes);
-        if (ret) {
-                fprintf(stderr, "Error writing header\n");
-                goto done;
-        }
-
-        ret = mappedfile_flush(&f->mf);
-        if (ret) {
-                /* TODO: try again before giving up */
-                fprintf(stderr, "Error flushing data to disk.\n");
-                goto done;
-        }
-
-done:
-        return ret;
-}
-
-/* zs_validate_header():
- *  Check if the header of a mapped file is valid.
- *
- * Return:
- *  This function will return an error if the mapped file isn't open
- *  or if the header is invalid.
- *  If the mapped file contains a valid header, this function populates the
- * f->header field with the values.
- */
-static int zs_validate_header(struct zsdb_file *f)
-{
-        int ret = SDB_OK;
-        struct zs_header *phdr;
-        uint32_t version;
-        uint32_t crc;
-        size_t mfsize;
-
-        if (!f->is_open || (f->mf->fd < 0))
-                return SDB_ERROR;
-
-        /* Seek to the beginning of the mapped file */
-        mappedfile_seek(&f->mf, 0, 0);
-
-        mappedfile_size(&f->mf, &mfsize);
-        if (mfsize < ZS_HDR_SIZE) {
-                fprintf(stderr, "File too small to be a zeroskip DB\n");
-                return SDB_INVALID_DB;
-        }
-
-        phdr = (struct zs_header *)f->mf->ptr;
-
-        /* Signature */
-        if (phdr->signature != hton64(ZS_HDR_SIGNATURE)) {
-                fprintf(stderr, "Invalid signature on Zeroskip DB!\n");
-                return SDB_INVALID_DB;
-        }
-        f->header.signature = ntoh64(phdr->signature);
-
-        /* Version */
-        version = ntohl(phdr->version);
-        if (version == 1) {
-                fprintf(stderr, "Valid zeroskip DB file. Version: %d\n",
-                        version);
-        } else {
-                fprintf(stderr, "Invalid zeroskip DB version.\n");
-        }
-        f->header.version = version;
-
-        /* UUID */
-        memcpy(f->header.uuid, phdr->uuid, sizeof(uuid_t));
-
-        /* Start and end indices */
-        f->header.startidx = ntoh32(phdr->startidx);
-        f->header.endidx = ntoh32(phdr->endidx);
-
-        /* CRC32 */
-        f->header.crc32 = ntoh32(phdr->crc32);
-        /* Check CRC32 */
-        crc = crc32(0L, Z_NULL, 0);
-        crc = crc32(crc, (void *)&f->header,
-                    sizeof(struct zs_header) - sizeof(uint32_t));
-        if (crc != f->header.crc32) {
-                fprintf(stderr, "checksum failed for zeroskip header.\n");
-                return SDB_INVALID_DB;
-        }
-
-        return SDB_OK;
 }
 
 static inline void copy_uint8_t(unsigned char *buf, uint8_t value)
@@ -702,144 +371,6 @@ done:
         return ret;
 }
 
-/*
- * create_dot_zsdb():
- * Creates a .zsdb file in the DB directory. This function assumes the caller
- * has sanitised the input. This function also generates the UUID for the DB
- * since this function is called when the DB is created first.
- *
- * The .zsdb file in a DB directory has the following structure:
- *      ZSDB Signature  -  64 bits
- *      current index   -  32 bits
- *      Parsed uuid str - 288 bits
- */
-static int create_dot_zsdb(struct zsdb_priv *priv)
-{
-        unsigned char stackbuf[DOTZSDB_SZ];
-        uint64_t signature;         /* Signature */
-        uuid_t uuid;
-        char uuidstr[UUID_STRLEN];
-        unsigned char *sptr;
-        struct mappedfile *mf;
-        int ret = SDB_OK;
-        size_t nbytes = 0;
-        cstring dotzsdbfname = CSTRING_INIT;
-
-        memset(&stackbuf, 0, DOTZSDB_SZ);
-        sptr = stackbuf;
-
-        /* Generate a new uuid */
-        uuid_generate(uuid);
-        uuid_unparse_lower(uuid, uuidstr);
-
-        /* The filename */
-        cstring_dup(&priv->dbdir, &dotzsdbfname);
-        cstring_addch(&dotzsdbfname, '/');
-        cstring_addstr(&dotzsdbfname, DOTZSDB_FNAME);
-
-        /* Header */
-        signature = ZS_HDR_SIGNATURE;
-        memcpy(sptr, &signature, sizeof(uint64_t));
-        sptr += sizeof(uint64_t);
-
-        /* Index */
-        *((uint32_t *)sptr) = hton32(0);
-        sptr += sizeof(uint32_t);
-
-        /* UUID */
-        memcpy(uuidstr, &uuidstr, sizeof(uuidstr));
-        memcpy(sptr, &uuidstr, sizeof(uuidstr));
-        sptr += sizeof(uuidstr);
-
-
-        /* Write to file */
-        if (mappedfile_open(dotzsdbfname.buf, MAPPEDFILE_RW_CR, &mf) != 0) {
-                fprintf(stderr, "Could not create %s!", dotzsdbfname);
-                ret = SDB_ERROR;
-                goto fail1;
-        }
-
-        if (mappedfile_write(&mf, &stackbuf, DOTZSDB_SZ, &nbytes) != 0) {
-                fprintf(stderr, "Could not write to file %s!",
-                        dotzsdbfname);
-                ret = SDB_ERROR;
-                goto fail2;
-        }
-
-        mappedfile_flush(&mf);
-
-fail2:
-        mappedfile_close(&mf);
-
-fail1:
-        cstring_release(&dotzsdbfname);
-        return ret;
-}
-
-/*
- * validate_dot_zsdb():
- * Checks a the .zsdb file in a given dbdir and ensures that it is
- * valid. If it is valid, it sets the values in the priv->dotzsdb
- * structure.
- *
- * Returns 1 if it is valid and 0 otherwise.
- */
-static int validate_dot_zsdb(struct zsdb_priv *priv)
-{
-        struct mappedfile *mf;
-        size_t mfsize;
-        struct dotzsdb *dothdr;
-        int ret = 1;
-        cstring dotzsdbfname = CSTRING_INIT;
-
-        /* The filename */
-        cstring_dup(&priv->dbdir, &dotzsdbfname);
-        cstring_addch(&dotzsdbfname, '/');
-        cstring_addstr(&dotzsdbfname, DOTZSDB_FNAME);
-
-        if (mappedfile_open(dotzsdbfname.buf, MAPPEDFILE_RD, &mf) != 0) {
-                fprintf(stderr, "Could not open %s!\n", dotzsdbfname.buf);
-                ret = 0;
-                goto fail1;
-        }
-
-        mappedfile_size(&mf, &mfsize);
-
-        if (mfsize < DOTZSDB_SZ) {
-                fprintf(stderr, "File too small to be zeroskip DB: %zu.\n",
-                        mfsize);
-                ret = 0;
-                goto fail2;
-        }
-
-        dothdr = (struct dotzsdb *)mf->ptr;
-        if (dothdr->signature == ZS_HDR_SIGNATURE) {
-                /* Signature */
-                memcpy(&priv->dotzsdb.signature, mf->ptr,
-                       sizeof(priv->dotzsdb.signature));
-
-                /* Index */
-                priv->dotzsdb.curidx = ntoh32(dothdr->curidx);
-
-                /* UUID str */
-                memcpy(&priv->dotzsdb.uuidstr,
-                       mf->ptr + sizeof(priv->dotzsdb.signature),
-                       sizeof(priv->dotzsdb.uuidstr));
-                uuid_parse(priv->dotzsdb.uuidstr, priv->uuid);
-        } else {
-                fprintf(stderr, "Invalid zeroskip DB %s.\n",
-                        dotzsdbfname.buf);
-                ret = 0;
-                goto fail2;
-        }
-
-fail2:
-        mappedfile_close(&mf);
-fail1:
-        cstring_release(&dotzsdbfname);
-        return ret;
-}
-
 
 static enum db_ftype_t interpret_dbfile_name(const char *str, size_t len)
 {
@@ -941,14 +472,14 @@ static int setup_db_dir(struct skiplistdb *db)
                 }
 
                 /* Create the .zsdb file */
-                if (create_dot_zsdb(priv) != SDB_OK) {
+                if (zs_dotzsdb_create(priv) != SDB_OK) {
                         fprintf(stderr, "Failed setting up DB.\n");
                         return SDB_ERROR;
                 }
         } else {
                 /* stat() was successful, so make sure what we stat()'ed is a
                    directory and nothing else. */
-                if (!S_ISDIR(sb.st_mode) || !validate_dot_zsdb(priv)) {
+                if (!S_ISDIR(sb.st_mode) || !zs_dotzsdb_validate(priv)) {
                         fprintf(stderr, "%s isn't a valid Zeroskip DB.\n",
                                 priv->dbdir.buf);
                         return SDB_ERROR;
@@ -1159,8 +690,8 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
            be updated if there is a valid file already in the DB, otherwise we
            are starting afresh.
         */
-        priv->factive.header.signature = ZS_HDR_SIGNATURE;
-        priv->factive.header.version = ZS_HDR_VERSION;
+        priv->factive.header.signature = ZS_SIGNATURE;
+        priv->factive.header.version = ZS_VERSION;
         priv->factive.header.startidx = 0;
         priv->factive.header.endidx = 0;
         priv->factive.header.crc32 = 0;
@@ -1198,7 +729,7 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
         mappedfile_size(&priv->factive.mf, &mf_size);
         /* The filesize is zero, it is a new file. */
         if (mf_size == 0) {
-                ret = zs_write_header(&priv->factive);
+                ret = zs_header_write(&priv->factive);
                 if (ret) {
                         fprintf(stderr, "Could not write zeroskip header.\n");
                         mappedfile_close(&priv->factive.mf);
@@ -1208,7 +739,7 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
 
         priv->is_open = 1;
 
-        if (zs_validate_header(&priv->factive)) {
+        if (zs_header_validate(&priv->factive)) {
                 ret = SDB_INVALID_DB;
                 mappedfile_close(&priv->factive.mf);
                 goto done;
