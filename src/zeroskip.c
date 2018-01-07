@@ -95,40 +95,111 @@ static void zsdb_files_clear(struct zsdb_files *files)
         zsdb_files_init(files);
 }
 
-static inline void copy_uint8_t(unsigned char *buf, uint8_t value)
+static inline void write_uint8_t(unsigned char *buf, uint8_t value)
 {
         uint8_t n_value = hton8(value);
         memcpy(buf, &n_value, sizeof(uint8_t));
 }
 
-static inline void copy_uint16_t(unsigned char *buf, uint16_t value)
+static inline uint8_t read_uint8_t(unsigned char *buf)
+{
+        return ntoh8(*((uint8_t *)(buf)));
+}
+
+static inline void write_uint16_t(unsigned char *buf, uint16_t value)
 {
         uint16_t n_value = hton16(value);
         memcpy(buf, &n_value, sizeof(uint16_t));
 }
 
-static inline void copy_uint24_t(unsigned char *buf, uint32_t value)
+static inline uint16_t read_uint16_t(unsigned char *buf)
 {
-        uint32_t n_value = hton32(0 << 24 | value);
-        memcpy(buf, &n_value, sizeof(uint32_t)); /* FIXME: Need to copy 3 bytes */
+        return ntoh16(*((uint16_t *)(buf)));
 }
 
-static inline void copy_uint32_t(unsigned char *buf, uint32_t value)
+static inline void write_uint24_t(unsigned char *buf, uint32_t value)
+{
+        uint8_t byte[3];
+        uint32_t tval = hton32(value);
+
+        byte[0] = (tval >>  0) & 0xFF;
+        byte[1] = (tval >>  8) & 0xFF;
+        byte[2] = (tval >> 16) & 0xFF;
+
+        memcpy(buf, &byte, sizeof(uint8_t) * 3);
+}
+
+static inline uint32_t read_uint24_t(unsigned char *buf)
+{
+        uint32_t value;
+        uint8_t byte[3];
+
+        byte[0] = *((uint8_t *)(buf));
+        byte[1] = *((uint8_t *)(buf + 1));
+        byte[2] = *((uint8_t *)(buf + 2));
+
+        value = (byte[2] << 16) |
+                (byte[1] <<  8) |
+                (byte[0] <<  0);
+
+        return ntoh32(value);
+}
+
+static inline void write_uint32_t(unsigned char *buf, uint32_t value)
 {
         uint32_t n_value = hton32(value);
         memcpy(buf, &n_value, sizeof(uint32_t));
 }
 
-static inline void copy_uint40_t(unsigned char *buf, uint64_t value)
+static inline uint32_t read_uint32_t(unsigned char *buf)
 {
-        uint64_t n_value = hton64(0L << 40 | value);
-        memcpy(buf, &n_value, sizeof(uint64_t)); /* FIXME: Need to copy 5 bytes */
+        return ntoh32(*((uint32_t *)(buf)));
 }
 
-static inline void copy_uint64_t(unsigned char *buf, uint64_t value)
+static inline void write_uint40_t(unsigned char *buf, uint64_t value)
+{
+        uint8_t byte[5];
+        uint64_t tval = hton64(value);
+
+        byte[0] = (tval >>  0) & 0xFF;
+        byte[1] = (tval >>  8) & 0xFF;
+        byte[2] = (tval >> 16) & 0xFF;
+        byte[3] = (tval >> 24) & 0xFF;
+        byte[4] = (tval >> 32) & 0xFF;
+
+        memcpy(buf, &byte, sizeof(uint8_t) * 5);
+}
+
+static inline uint64_t read_uint40_t(unsigned char *buf)
+{
+        uint64_t value;
+        uint8_t byte[5];
+
+        byte[0] = *((uint8_t *)(buf));
+        byte[1] = *((uint8_t *)(buf + 1));
+        byte[2] = *((uint8_t *)(buf + 2));
+        byte[3] = *((uint8_t *)(buf + 3));
+        byte[4] = *((uint8_t *)(buf + 4));
+
+        value = ((uint64_t)byte[4] << 32) |
+                (byte[3] << 24) |
+                (byte[2] << 16) |
+                (byte[1] <<  8) |
+                (byte[0] <<  0);
+
+        return ntoh64(value);
+}
+
+static inline void write_uint64_t(unsigned char *buf, uint64_t value)
 {
         uint64_t n_value = hton64(value);
         memcpy(buf, &n_value, sizeof(uint64_t));
+}
+
+static inline uint64_t read_uint64_t(unsigned char *buf)
+{
+
+        return ntoh64(*((uint64_t *)(buf)));
 }
 
 /* Caller should free buf
