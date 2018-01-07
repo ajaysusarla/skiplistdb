@@ -116,30 +116,30 @@ inline size_t off_to_size_t(off_t len)
 /*
  * Endiness utils
  */
-#define hton8(x)  (x)
-#define ntoh8(x)  (x)
-#define hton16(x) htons(x)
-#define ntoh16(x) ntohs(x)
-#define hton32(x) htonl(x)
-#define ntoh32(x) ntohl(x)
-
-#if BYTE_ORDER == LITTLE_ENDIAN
-
-static inline uint64_t hton64(uint64_t num)
+static inline uint64_t bswap64(uint64_t val)
 {
-        register uint32_t u, l;
-        u = num >> 32;
-        l = (uint32_t) num;
-
-        return htonl(u) | ((uint64_t)htonl(l) << 32);
+        return (((val & (uint64_t)0x00000000000000ffULL) << 56) |
+                ((val & (uint64_t)0x000000000000ff00ULL) << 40) |
+                ((val & (uint64_t)0x0000000000ff0000ULL) << 24) |
+                ((val & (uint64_t)0x00000000ff000000ULL) <<  8) |
+                ((val & (uint64_t)0x000000ff00000000ULL) >>  8) |
+                ((val & (uint64_t)0x0000ff0000000000ULL) >> 24) |
+                ((val & (uint64_t)0x00ff000000000000ULL) >> 40) |
+                ((val & (uint64_t)0xff00000000000000ULL) >> 56));
 }
-#define ntoh64(_x)        hton64(_x)
 
+#define hton8(x)   (x)
+#define ntoh8(x)   (x)
+#define hton16(x)  htons(x)
+#define ntoh16(x)  ntohs(x)
+#define hton32(x)  htonl(x)
+#define ntoh32(x)  ntohl(x)
+#if BYTE_ORDER == LITTLE_ENDIAN
+#define hton64(x)  bswap64(x)
+#define ntoh64(x)  bswap64(x)
 #elif BYTE_ORDER == BIG_ENDIAN
-
-#define hton64(_x)        (_x)
-#define ntoh64(_x)        hton64(_x)
-
+#define hton64(x)  (x)
+#define ntoh64(x)  (x)
 #endif
 
 /*
