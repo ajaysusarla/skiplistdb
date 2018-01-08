@@ -70,15 +70,15 @@ int cmd_new(int argc, char **argv, const char *progname)
                 goto fail1;
         }
 
+        printf("Created %s db %s.\n",
+               (type == ZERO_SKIP) ? "zeroskip" : "twoskip",
+               fname);
+
 fail1:
         if (skiplistdb_final(db) != SDB_OK) {
                 fprintf(stderr, "Failed destroying the database instance.\n");
                 exit(EXIT_FAILURE);
         }
-
-        printf("Created %s db %s.\n",
-               (type == ZERO_SKIP) ? "zeroskip" : "twoskip",
-               fname);
 
         exit(EXIT_SUCCESS);
 }

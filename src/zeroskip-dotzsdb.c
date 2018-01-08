@@ -25,9 +25,7 @@
 int zs_dotzsdb_create(struct zsdb_priv *priv)
 {
         unsigned char stackbuf[DOTZSDB_SIZE];
-        uint64_t signature;         /* Signature */
         uuid_t uuid;
-        char uuidstr[UUID_STRLEN];
         unsigned char *sptr;
         struct mappedfile *mf;
         int ret = SDB_OK;
@@ -39,7 +37,7 @@ int zs_dotzsdb_create(struct zsdb_priv *priv)
 
         /* Generate a new uuid */
         uuid_generate(uuid);
-        uuid_unparse_lower(uuid, uuidstr);
+        uuid_unparse_lower(uuid, priv->dotzsdb.uuidstr);
 
         /* The filename */
         cstring_dup(&priv->dbdir, &dotzsdbfname);
@@ -47,18 +45,18 @@ int zs_dotzsdb_create(struct zsdb_priv *priv)
         cstring_addstr(&dotzsdbfname, DOTZSDB_FNAME);
 
         /* Header */
-        signature = ZS_SIGNATURE;
-        memcpy(sptr, &signature, sizeof(uint64_t));
+        priv->dotzsdb.signature = ZS_SIGNATURE;
+        memcpy(sptr, &priv->dotzsdb.signature, sizeof(uint64_t));
         sptr += sizeof(uint64_t);
 
         /* Index */
+        priv->dotzsdb.curidx = 0;
         *((uint32_t *)sptr) = hton32(0);
         sptr += sizeof(uint32_t);
 
         /* UUID */
-        memcpy(uuidstr, &uuidstr, sizeof(uuidstr));
-        memcpy(sptr, &uuidstr, sizeof(uuidstr));
-        sptr += sizeof(uuidstr);
+        memcpy(sptr, &priv->dotzsdb.uuidstr, UUID_STRLEN);
+        sptr += UUID_STRLEN;
 
 
         /* Write to file */

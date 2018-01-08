@@ -688,12 +688,15 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
             goto done;          /* TODO: Free data */
         }
 
+        fprintf(stderr, "Opening file: %s\n", priv->factive.fname.buf);
         ret = mappedfile_open(priv->factive.fname.buf,
                               mappedfile_flags, &priv->factive.mf);
         if (ret) {
                 ret = SDB_IOERROR;
                 goto done;
         }
+
+        priv->factive.is_open = 1;
 
         mappedfile_size(&priv->factive.mf, &mf_size);
         /* The filesize is zero, it is a new file. */
