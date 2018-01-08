@@ -43,11 +43,11 @@
 static inline int rec_offset(uint8_t type, size_t datalen)
 {
         switch(type) {
-        case REC_TYPE_SHORT_KEY:
+        case REC_TYPE_KEY:
                 return sizeof(struct zs_short_key) + datalen;
         case REC_TYPE_LONG_KEY:
                 return sizeof(struct zs_long_key) + datalen;
-        case REC_TYPE_SHORT_VALUE:
+        case REC_TYPE_VALUE:
                 return sizeof(struct zs_short_val) + datalen;
         case REC_TYPE_LONG_VALUE:
                 return sizeof(struct zs_long_val) + datalen;
@@ -209,44 +209,46 @@ static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
 {
         int ret = SDB_OK;
         unsigned char *kbuf;
-        size_t kbuflen, finalkeylen, pos;
+        size_t kbuflen, finalkeylen, pos = 0;
         enum record_t type;
 
         kbuflen = ZS_KEY_BASE_REC_SIZE;
+        type = REC_TYPE_KEY;
+
+        if (keylen > MAX_SHORT_KEY_LEN)
+                type |= REC_TYPE_LONG;
 
         /* Minimum buf size */
-        if (keylen <= MAX_SHORT_KEY_LEN) {
-                type = REC_TYPE_KEY;
-        } else {
-                type = REC_TYPE_LONG_KEY;
-        }
-
         finalkeylen = roundup64(keylen * 8);
         finalkeylen /= 8;
-
         kbuflen += finalkeylen;
 
         kbuf = xcalloc(1, kbuflen);
 
-        pos = 0;
-
-        /* keytype */
-        kbuf[pos] = type;
-        pos += sizeof(uint8_t);
-
-        /* length of key */
         if (type == REC_TYPE_KEY) {
-                *((uint16_t *)(kbuf + pos)) = hton16(keylen);
-                pos += sizeof(uint16_t);
+                /* If it is a short key, the first 3 fields make up 64 bits */
+                uint64_t val;
+                val = ((uint64_t)kbuflen & ((1UL << 40) - 1)); /* Val offset */
+                val |= ((uint64_t)keylen << 40);     /* Key length */
+                val |= ((uint64_t)type << 56);       /* Type */
+                write_be64(kbuf + pos, val);
+                pos += sizeof(uint64_t);
+                write_be64(kbuf + pos, 0ULL);     /* Extended length */
+                pos += sizeof(uint64_t);
+                write_be64(kbuf + pos, 0ULL);     /* Extended Value offset */
+                pos += sizeof(uint64_t);
+
         } else {
-                *((uint64_t *)(kbuf + pos)) = hton64(keylen);
+                /* A long key has the type followed by 56 bits of nothing */
+                uint64_t val;
+                val = ((uint64_t)type & ((1UL << 56) - 1));
+                write_be64(kbuf + pos, val);
+                pos += sizeof(uint64_t);
+                write_be64(kbuf + pos, keylen);     /* Extended length */
+                pos += sizeof(uint64_t);
+                write_be64(kbuf + pos, kbuflen);    /* Extended Value offset */
                 pos += sizeof(uint64_t);
         }
-
-        /* offset to value - point to the end of the buffer,
-         * after which the value buffer begins */
-        *((uint64_t *)(kbuf + pos)) = hton64(kbuflen);
-        pos += sizeof(uint64_t);
 
         /* the key */
         memcpy(kbuf + pos, key, keylen);
@@ -265,17 +267,16 @@ static int zs_prepare_val_buf(unsigned char *val, size_t vallen,
 {
         int ret = SDB_OK;
         unsigned char *vbuf;
-        size_t vbuflen, finalvallen, pos;
+        size_t vbuflen, finalvallen, pos = 0;
         enum record_t type;
 
         vbuflen = ZS_VAL_BASE_REC_SIZE;
-        /* Minimum buf size */
-        if (vallen <= MAX_SHORT_VAL_LEN) {
-                type = REC_TYPE_VALUE;
-        } else {
-                type = REC_TYPE_LONG_VALUE;
-        }
+        type = REC_TYPE_VALUE;
 
+        if (vallen > MAX_SHORT_VAL_LEN)
+                type |= REC_TYPE_LONG;
+
+        /* Minimum buf size */
         finalvallen = roundup64(vallen * 8);
         finalvallen /= 8;
 
@@ -283,23 +284,27 @@ static int zs_prepare_val_buf(unsigned char *val, size_t vallen,
 
         vbuf = xcalloc(1, vbuflen);
 
-        pos = 0;
-
-        /* type */
-        vbuf[pos] = type;
-        pos += sizeof(uint8_t);
-
-        /* length of value */
-        if (type == REC_TYPE_VALUE) {
-                *((uint32_t *)(vbuf + pos)) = hton32(vallen);
-                pos += sizeof(uint32_t);
+        if (type == REC_TYPE_KEY) {
+                /* The first 3 fields in a short key make up 64 bits */
+                uint64_t val = 0;
+                val = ((uint64_t)vallen & ((1UL << 32) - 1));  /* Val length */
+                val |= ((uint64_t)type << 56);                 /* Type */
+                write_be64(vbuf + pos, val);
+                pos += sizeof(uint64_t);
+                write_be64(vbuf + pos, 0ULL);     /* Extended length */
+                pos += sizeof(uint64_t);
         } else {
-                *((uint64_t *)(vbuf + pos)) = hton64(vallen);
+                /* A long val has the type followed by 56 bits of nothing */
+                uint64_t val;
+                val = ((uint64_t)type & ((1UL << 56) - 1));
+                write_be64(vbuf + pos, val);
+                pos += sizeof(uint64_t);
+                write_be64(vbuf + pos, vallen);
                 pos += sizeof(uint64_t);
         }
 
         /* the value */
-        memcpy(vbuf+pos, val, vallen);
+        memcpy(vbuf + pos, val, vallen);
 
         *buflen = vbuflen;
         *buf = vbuf;
@@ -398,7 +403,7 @@ static int zs_write_commit_record(struct zsdb_priv *priv)
                 uint32_t sccrc;
                 struct zs_short_commit sc;
 
-                sc.type = REC_TYPE_SHORT_COMMIT;
+                sc.type = REC_TYPE_COMMIT;
                 sc.length = priv->factive.mf->crc32_data_len;
                 sc.crc32 = 0;
 
@@ -589,7 +594,7 @@ static int zs_dump_record(struct zsdb_priv *priv, size_t *offset)
         rectype = fptr[0];
 
         switch(rectype) {
-        case REC_TYPE_SHORT_KEY:
+        case REC_TYPE_KEY:
         {
                 uint16_t len = ntoh16(*((uint16_t *)(fptr + 1)));
                 uint64_t val_offset = ntoh64(*((uint64_t *)(fptr + 3)));
