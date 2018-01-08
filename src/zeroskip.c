@@ -599,7 +599,7 @@ static int load_one_unpacked_record(struct zsdb_priv *priv, size_t *offset)
                 break;
         case REC_TYPE_2ND_HALF_COMMIT:
                 break;
-        case REC_TYPE_SHORT_FINAL:
+        case REC_TYPE_FINAL:
                 break;
         case REC_TYPE_LONG_FINAL:
                 break;
