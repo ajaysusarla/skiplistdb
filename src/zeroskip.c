@@ -112,8 +112,7 @@ static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
                 type |= REC_TYPE_LONG;
 
         /* Minimum buf size */
-        finalkeylen = roundup64(keylen * 8);
-        finalkeylen /= 8;
+        finalkeylen = roundup64bits(keylen);
         kbuflen += finalkeylen;
 
         kbuf = xcalloc(1, kbuflen);
@@ -170,8 +169,7 @@ static int zs_prepare_val_buf(unsigned char *val, size_t vallen,
                 type |= REC_TYPE_LONG;
 
         /* Minimum buf size */
-        finalvallen = roundup64(vallen * 8);
-        finalvallen /= 8;
+        finalvallen = roundup64bits(vallen);
 
         vbuflen += finalvallen;
 
@@ -718,7 +716,7 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
         }
 
         /* Load the records into a Btree */
-        load_unpacked_records_to_btree(priv, mf_size);
+        /* load_unpacked_records_to_btree(priv, mf_size); */
 
         /* Seek to the end of the file, that's where the
            records need to appended to.

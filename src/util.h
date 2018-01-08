@@ -285,9 +285,14 @@ static inline size_t round_up(size_t n, size_t m)
         return ((n + m - 1) / m) * m;
 }
 
-#define roundup64(x) round_up(x, 64)
-#define roundup32(x) round_up(x, 32)
+static inline size_t round_up_bits(size_t n, size_t m)
+{
+        return ((((n * 8) + m - 1) / m) * m) / 8;
+}
 
+#define roundup64(x)      round_up((x), 64)
+#define roundup32(x)      round_up((x), 32)
+#define roundup64bits(x)  round_up_bits((x), 64)
 /*
   File Locking
  */
