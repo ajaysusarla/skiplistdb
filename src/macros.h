@@ -25,9 +25,14 @@
 
 #define _unused_          __attribute__((unused))
 #define _cleanup_(x)      __attribute__((cleanup(x)))
+#define _packed_          __attribute__((packed))
+#define _public_          __attribute__((visibility("default")))
+#define _hidden_          __attribute__((visibility("hidden")))
+#define _likely_(x)       (__builtin_expect(!!(x),1))
+#define _unlikely_(x)     (__builtin_expect(!!(x),0))
 
 #if __GNUC__ >= 7
-#define _fallthrough_ __attribute__((fallthrough))
+#define _fallthrough_     __attribute__((fallthrough))
 #else
 #define _fallthrough_ /* fall through */
 #endif                /* __GNUC__ >= 7 */
