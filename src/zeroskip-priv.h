@@ -106,8 +106,8 @@ enum record_t {
 };
 
 
-#define ZS_KEY_BASE_REC_SIZE 192
-#define ZS_VAL_BASE_REC_SIZE 128
+#define ZS_KEY_BASE_REC_SIZE 24
+#define ZS_VAL_BASE_REC_SIZE 16
 
 struct zs_key {
         uint8_t type;

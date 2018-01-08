@@ -122,15 +122,15 @@ int zs_dotzsdb_validate(struct zsdb_priv *priv)
         dothdr = (struct dotzsdb *)mf->ptr;
         if (dothdr->signature == ZS_SIGNATURE) {
                 /* Signature */
-                memcpy(&priv->dotzsdb.signature, mf->ptr,
-                       sizeof(priv->dotzsdb.signature));
+                priv->dotzsdb.signature = dothdr->signature;
 
                 /* Index */
                 priv->dotzsdb.curidx = ntoh32(dothdr->curidx);
 
                 /* UUID str */
                 memcpy(&priv->dotzsdb.uuidstr,
-                       mf->ptr + sizeof(priv->dotzsdb.signature),
+                       mf->ptr + sizeof(priv->dotzsdb.signature) +
+                       sizeof(priv->dotzsdb.curidx),
                        sizeof(priv->dotzsdb.uuidstr));
                 uuid_parse(priv->dotzsdb.uuidstr, priv->uuid);
         } else {
