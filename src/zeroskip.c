@@ -216,7 +216,7 @@ static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
 
         /* Minimum buf size */
         if (keylen <= MAX_SHORT_KEY_LEN) {
-                type = REC_TYPE_SHORT_KEY;
+                type = REC_TYPE_KEY;
         } else {
                 type = REC_TYPE_LONG_KEY;
         }
@@ -235,7 +235,7 @@ static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
         pos += sizeof(uint8_t);
 
         /* length of key */
-        if (type == REC_TYPE_SHORT_KEY) {
+        if (type == REC_TYPE_KEY) {
                 *((uint16_t *)(kbuf + pos)) = hton16(keylen);
                 pos += sizeof(uint16_t);
         } else {
@@ -271,7 +271,7 @@ static int zs_prepare_val_buf(unsigned char *val, size_t vallen,
         vbuflen = ZS_VAL_BASE_REC_SIZE;
         /* Minimum buf size */
         if (vallen <= MAX_SHORT_VAL_LEN) {
-                type = REC_TYPE_SHORT_VALUE;
+                type = REC_TYPE_VALUE;
         } else {
                 type = REC_TYPE_LONG_VALUE;
         }
@@ -290,7 +290,7 @@ static int zs_prepare_val_buf(unsigned char *val, size_t vallen,
         pos += sizeof(uint8_t);
 
         /* length of value */
-        if (type == REC_TYPE_SHORT_VALUE) {
+        if (type == REC_TYPE_VALUE) {
                 *((uint32_t *)(vbuf + pos)) = hton32(vallen);
                 pos += sizeof(uint32_t);
         } else {
@@ -632,7 +632,7 @@ static int zs_dump_record(struct zsdb_priv *priv, size_t *offset)
                 break;
         case REC_TYPE_2ND_HALF_COMMIT:
                 break;
-        case REC_TYPE_SHORT_FINAL:
+        case REC_TYPE_FINAL:
                 break;
         case REC_TYPE_LONG_FINAL:
                 break;
@@ -685,15 +685,15 @@ static int load_one_unpacked_record(struct zsdb_priv *priv, size_t *offset)
 
         rectype = fptr[0];
         switch(rectype) {
-        case REC_TYPE_SHORT_KEY:
+        case REC_TYPE_KEY:
                 break;
         case REC_TYPE_LONG_KEY:
                 break;
-        case REC_TYPE_SHORT_VALUE:
+        case REC_TYPE_VALUE:
                 break;
         case REC_TYPE_LONG_VALUE:
                 break;
-        case REC_TYPE_SHORT_COMMIT:
+        case REC_TYPE_COMMIT:
                 *offset = *offset + sizeof(struct zs_short_commit);
                 break;
         case REC_TYPE_LONG_COMMIT:
