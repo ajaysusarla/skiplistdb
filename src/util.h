@@ -114,7 +114,7 @@ inline size_t off_to_size_t(off_t len)
 #define ENSURE_NON_NULL(p) p?p:""
 
 /*
- * Endiness utils
+ * Endianness utils
  */
 static inline uint64_t bswap64(uint64_t val)
 {
@@ -141,6 +141,19 @@ static inline uint64_t bswap64(uint64_t val)
 #define hton64(x)  (x)
 #define ntoh64(x)  (x)
 #endif
+
+/* Wrapper functions for reading and writing data.
+   p - pointer to buffer, v - value to be copied into buffer
+ */
+#define write_be8(p, v)    do { *(uint8_t *)(p) = hton8(v); } while(0)
+#define write_be16(p, v)   do { *(uint16_t *)(p) = hton16(v); } while(0)
+#define write_be32(p, v)   do { *(uint32_t *)(p) = hton32(v); } while(0)
+#define write_be64(p, v)   do { *(uint64_t *)(p) = hton64(v); } while(0)
+
+#define read_be8(p)        ntoh8(*(uint8_t *)(p))
+#define read_be16(p)       ntoh16(*(uint16_t *)(p))
+#define read_be32(p)       ntoh32(*(uint32_t *)(p))
+#define read_be64(p)       ntoh64(*(uint64_t *)(p))
 
 /*
  * ARRAY_SIZE - get the number of elements in a visible array
