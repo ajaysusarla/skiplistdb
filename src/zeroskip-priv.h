@@ -91,19 +91,20 @@ enum db_ftype_t {
  * Zeroskip record[key|value|commit]
  */
 enum record_t {
-        REC_TYPE_SHORT_KEY           = 0x01,
-        REC_TYPE_LONG_KEY            = 0x21,
-        REC_TYPE_SHORT_VALUE         = 0x02,
-        REC_TYPE_LONG_VALUE          = 0x22,
-        REC_TYPE_SHORT_COMMIT        = 0x04,
-        REC_TYPE_LONG_COMMIT         = 0x24,
-        REC_TYPE_2ND_HALF_COMMIT     = 0x08,
-        REC_TYPE_SHORT_FINAL         = 0x10,
-        REC_TYPE_LONG_FINAL          = 0x30,
-        REC_TYPE_HAS_LONG_VALUES     = 0x20,
-        REC_TYPE_DELETED             = 0x40,
-        REC_TYPE_UNUSED              = 0x80,
+        REC_TYPE_UNUSED              =  0,
+        REC_TYPE_KEY                 =  1,
+        REC_TYPE_VALUE               =  2,
+        REC_TYPE_COMMIT              =  4,
+        REC_TYPE_2ND_HALF_COMMIT     =  8,
+        REC_TYPE_FINAL               = 16,
+        REC_TYPE_LONG                = 32,
+        REC_TYPE_DELETED             = 64,
+        REC_TYPE_LONG_KEY            = REC_TYPE_KEY | REC_TYPE_LONG,
+        REC_TYPE_LONG_VALUE          = REC_TYPE_VALUE | REC_TYPE_LONG,
+        REC_TYPE_LONG_COMMIT         = REC_TYPE_COMMIT | REC_TYPE_LONG,
+        REC_TYPE_LONG_FINAL          = REC_TYPE_FINAL | REC_TYPE_LONG,
 };
+
 
 #define ZS_KEY_BASE_REC_SIZE 192
 #define ZS_VAL_BASE_REC_SIZE 128
@@ -162,8 +163,8 @@ struct zs_long_commit {
         uint32_t crc32;
 };
 
-#define MAX_SHORT_KEY_LEN 65536
-#define MAX_SHORT_VAL_LEN 16777216
+#define MAX_SHORT_KEY_LEN 65535
+#define MAX_SHORT_VAL_LEN 16777215
 
 struct zs_rec {
         uint8_t type;
