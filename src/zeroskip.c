@@ -97,6 +97,54 @@ static void zsdb_files_clear(struct zsdb_files *files)
 
 /* Caller should free buf
  */
+static int zs_prepare_delete_key_buf(unsigned char *key, size_t keylen,
+                                     unsigned char **buf, size_t *buflen)
+{
+        int ret = SDB_OK;
+        unsigned char *kbuf;
+        size_t kbuflen, finalkeylen, pos = 0;
+        uint64_t val;
+        enum record_t type = REC_TYPE_DELETED;
+
+        kbuflen = ZS_KEY_BASE_REC_SIZE;
+
+        /* Minimum buf size */
+        finalkeylen = roundup64bits(keylen);
+        kbuflen += finalkeylen;
+
+        kbuf = xcalloc(1, kbuflen);
+
+        if (keylen <= MAX_SHORT_KEY_LEN) {
+                val = ((uint64_t)0ULL & ((1ULL << 40) - 1));
+                val |= ((uint64_t)keylen << 40);     /* Key length */
+                val |= ((uint64_t)type << 56);       /* Type */
+                write_be64(kbuf + pos, val);
+                pos += sizeof(uint64_t);
+                write_be64(kbuf + pos, 0ULL);     /* Extended length */
+                pos += sizeof(uint64_t);
+                write_be64(kbuf + pos, 0ULL);     /* Extended Value offset */
+                pos += sizeof(uint64_t);
+        } else {
+                val = ((uint64_t)type & ((1ULL << 56) - 1));
+                pos += sizeof(uint64_t);
+                write_be64(kbuf + pos, keylen);     /* Extended length */
+                pos += sizeof(uint64_t);
+                write_be64(kbuf + pos, 0ULL);       /* Extended Value offset */
+                pos += sizeof(uint64_t);
+        }
+
+        /* the key */
+        memcpy(kbuf + pos, key, keylen);
+        pos += keylen;
+
+        *buflen = kbuflen;
+        *buf = kbuf;
+
+        return ret;
+}
+
+/* Caller should free buf
+ */
 static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
                               unsigned char **buf, size_t *buflen)
 {
@@ -120,7 +168,7 @@ static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
         if (type == REC_TYPE_KEY) {
                 /* If it is a short key, the first 3 fields make up 64 bits */
                 uint64_t val;
-                val = ((uint64_t)kbuflen & ((1UL << 40) - 1)); /* Val offset */
+                val = ((uint64_t)kbuflen & ((1ULL << 40) - 1)); /* Val offset */
                 val |= ((uint64_t)keylen << 40);     /* Key length */
                 val |= ((uint64_t)type << 56);       /* Type */
                 write_be64(kbuf + pos, val);
@@ -133,7 +181,7 @@ static int zs_prepare_key_buf(unsigned char *key, size_t keylen,
         } else {
                 /* A long key has the type followed by 56 bits of nothing */
                 uint64_t val;
-                val = ((uint64_t)type & ((1UL << 56) - 1));
+                val = ((uint64_t)type & ((1ULL << 56) - 1));
                 write_be64(kbuf + pos, val);
                 pos += sizeof(uint64_t);
                 write_be64(kbuf + pos, keylen);     /* Extended length */
