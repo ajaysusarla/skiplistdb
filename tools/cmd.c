@@ -27,14 +27,12 @@ int cmd_parse_config(const char *cfile _unused_)
 
 DBDumpLevel parse_dump_level_string(const char *dblevel)
 {
-        if (!dblevel || strcmp(dblevel, "recs") == 0)
+        if (!dblevel || strcmp(dblevel, "active") == 0)
                 return DB_DUMP_RECS;
-        else if (strcmp(dblevel, "ptrs") == 0)
-                return DB_DUMP_RECS_PTRS;
         else if (strcmp(dblevel, "all") == 0)
                 return DB_DUMP_ALL;
         else
-                cmd_die_usage("...", "--dump=recs|ptrs|all");
+                cmd_die_usage("...", "--dump=active|all");
 
         return DB_DUMP_ALL;           /* Default to dump all */
 }
