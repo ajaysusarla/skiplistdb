@@ -16,6 +16,7 @@ SDB_LIBOBJS =          	    \
 	zeroskip.o	    \
 	zeroskip-dotzsdb.o  \
 	zeroskip-header.o   \
+	zeroskip-record.o   \
 	$(NULL)
 
 # Headers
