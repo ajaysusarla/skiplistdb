@@ -48,13 +48,11 @@ static inline int rec_offset(uint8_t type, size_t datalen)
 {
         switch(type) {
         case REC_TYPE_KEY:
-                return sizeof(struct zs_short_key) + datalen;
         case REC_TYPE_LONG_KEY:
-                return sizeof(struct zs_long_key) + datalen;
+                return ZS_KEY_BASE_REC_SIZE + datalen;
         case REC_TYPE_VALUE:
-                return sizeof(struct zs_short_val) + datalen;
         case REC_TYPE_LONG_VALUE:
-                return sizeof(struct zs_long_val) + datalen;
+                return ZS_VAL_BASE_REC_SIZE + datalen;
         }
 }
 

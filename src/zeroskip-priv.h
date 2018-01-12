@@ -105,63 +105,53 @@ enum record_t {
         REC_TYPE_LONG_FINAL          = REC_TYPE_FINAL | REC_TYPE_LONG,
 };
 
-
+struct zs_key_base {
+        uint8_t  type;
+        uint16_t slen;
+        uint64_t sval_offset : 40;
+        uint64_t llen;
+        uint64_t lval_offset;
+};
+/* Since the structure isn't packed not doing a sizeof */
 #define ZS_KEY_BASE_REC_SIZE 24
-#define ZS_VAL_BASE_REC_SIZE 16
 
 struct zs_key {
-        uint8_t type;
-        uint64_t length;
-        uint64_t val_offset;
-        uint8_t *data;
+        struct zs_key_base base;
+        unsigned char *data;
 };
+
+struct zs_val_base {
+        uint8_t  type;
+        uint32_t slen : 24;
+        uint32_t nullpad;
+        uint64_t llen;
+};
+/* Since the structure isn't packed not doing a sizeof */
+#define ZS_VAL_BASE_REC_SIZE 16
 
 struct zs_val {
-        uint8_t type;
-        uint64_t length;
-        uint8_t *data;
-};
-
-struct zs_short_key {
-        uint8_t  type;
-        uint16_t length;
-        uint64_t val_offset;
-        uint8_t  *data;
-};
-
-struct zs_long_key {
-        uint8_t  type;
-        uint64_t length;
-        uint64_t val_offset;
-        uint8_t  *data;
-};
-
-struct zs_short_val {
-        uint8_t  type;
-        uint32_t length;
-        uint8_t  *data;
-};
-
-struct zs_long_val {
-        uint8_t  type;
-        uint64_t length;
-        uint8_t  *data;
+        struct zs_val_base base;
+        unsigned char *data;
 };
 
 struct zs_short_commit {
         uint8_t type;
-        uint32_t length;
+        uint32_t length : 24;
         uint32_t crc32;
 };
+/* Since the structure isn't packed not doing a sizeof */
+#define ZS_SHORT_COMMIT_REC_SIZE 8
 
-struct zs_long_commit {
-        uint8_t type1;
-        uint8_t  padding1[7];
+struct _packed_ zs_long_commit {
+        uint8_t  type1;
+        uint64_t padding1 : 56;
         uint64_t length;
-        uint8_t type2;
-        uint8_t  padding2[3];
+        uint8_t  type2;
+        uint32_t padding2 : 24;
         uint32_t crc32;
 };
+/* Since the structure isn't packed not doing a sizeof */
+#define ZS_LONG_COMMIT_REC_SIZE 24
 
 #define MAX_SHORT_KEY_LEN 65535
 #define MAX_SHORT_VAL_LEN 16777215
@@ -169,10 +159,8 @@ struct zs_long_commit {
 struct zs_rec {
         uint8_t type;
         union {
-                struct zs_short_key    skey;
-                struct zs_long_key     lkey;
-                struct zs_short_val    sval;
-                struct zs_long_val     lval;
+                struct zs_key key;
+                struct zs_val val;
                 struct zs_short_commit scommit;
                 struct zs_long_commit  lcommit;
         } rec;
