@@ -177,7 +177,7 @@ static int zs_prepare_delete_key_buf(unsigned char *key, size_t keylen,
 /**
  ** External functions
  **/
-int zs_write_keyval_record(struct zsdb_priv *priv,
+int zs_write_keyval_record(struct zsdb_file *f,
                            unsigned char *key, size_t keylen,
                            unsigned char *data, size_t datalen)
 {
@@ -186,7 +186,10 @@ int zs_write_keyval_record(struct zsdb_priv *priv,
         unsigned char *keybuf, *valbuf;
         size_t mfsize, nbytes;
 
-        assert(priv);
+        assert(f);
+
+        if (!f->is_open)
+                return SDB_INTERNAL;
 
         ret = zs_prepare_key_buf(key, keylen, &keybuf, &keybuflen);
         if (ret != SDB_OK) {
@@ -199,14 +202,14 @@ int zs_write_keyval_record(struct zsdb_priv *priv,
         }
 
         /* Get the current mappedfile size */
-        ret = mappedfile_size(&priv->factive.mf, &mfsize);
+        ret = mappedfile_size(&f->mf, &mfsize);
         if (ret) {
                 fprintf(stderr, "Could not get mappedfile size\n");
                 goto done;
         }
 
         /* write key buffer */
-        ret = mappedfile_write(&priv->factive.mf, (void *)keybuf, keybuflen, &nbytes);
+        ret = mappedfile_write(&f->mf, (void *)keybuf, keybuflen, &nbytes);
         if (ret) {
                 fprintf(stderr, "Error writing key\n");
                 ret = SDB_IOERROR;
@@ -216,7 +219,7 @@ int zs_write_keyval_record(struct zsdb_priv *priv,
         /* assert(nbytes == keybuflen); */
 
         /* write value buffer */
-        ret = mappedfile_write(&priv->factive.mf, (void *)valbuf, valbuflen, &nbytes);
+        ret = mappedfile_write(&f->mf, (void *)valbuf, valbuflen, &nbytes);
         if (ret) {
                 fprintf(stderr, "Error writing key\n");
                 ret = SDB_IOERROR;
@@ -228,11 +231,11 @@ int zs_write_keyval_record(struct zsdb_priv *priv,
         /* If we failed writing the value buffer, then restore the db file to
          * the original size we had before updating */
         if (ret != SDB_OK) {
-                mappedfile_truncate(&priv->factive.mf, mfsize);
+                mappedfile_truncate(&f->mf, mfsize);
         }
 
         /* Flush the change to disk */
-        ret = mappedfile_flush(&priv->factive.mf);
+        ret = mappedfile_flush(&f->mf);
         if (ret) {
                 /* TODO: try again before giving up */
                 fprintf(stderr, "Error flushing data to disk.\n");
@@ -247,19 +250,21 @@ done:
         return ret;
 }
 
-int zs_write_commit_record(struct zsdb_priv *priv)
+int zs_write_commit_record(struct zsdb_file *f)
 {
         int ret = SDB_OK;
         size_t buflen, nbytes;
-        unsigned char buf[24];
+        unsigned char buf[24], *ptr;
         uint32_t crc;
 
 
-        assert(priv);
+        assert(f);
+        if (!f->is_open)
+                return SDB_INTERNAL;
 
         memset(&buf, 0, sizeof(buf));
 
-        if (priv->factive.mf->crc32_data_len > MAX_SHORT_VAL_LEN) {
+        if (f->mf->crc32_data_len > MAX_SHORT_VAL_LEN) {
                 uint32_t lccrc;
                 struct zs_long_commit lc;
                 buflen = sizeof(struct zs_long_commit);
@@ -269,14 +274,14 @@ int zs_write_commit_record(struct zsdb_priv *priv)
                 struct zs_short_commit sc;
 
                 sc.type = REC_TYPE_COMMIT;
-                sc.length = priv->factive.mf->crc32_data_len;
+                sc.length = f->mf->crc32_data_len;
                 sc.crc32 = 0;
 
                 /* Compute CRC32 */
                 sccrc = crc32(0L, Z_NULL, 0);
                 sccrc = crc32(sccrc, (void *)&sc,
                               sizeof(struct zs_short_commit) - sizeof(uint32_t));
-                crc = crc32_end(&priv->factive.mf);
+                crc = crc32_end(&f->mf);
                 sc.crc32 = crc32_combine(crc, sccrc, sizeof(uint32_t));
 
                 /* type */
@@ -290,7 +295,7 @@ int zs_write_commit_record(struct zsdb_priv *priv)
                 buflen = sizeof(struct zs_short_commit);
         }
 
-        ret = mappedfile_write(&priv->factive.mf, (void *)buf, buflen, &nbytes);
+        ret = mappedfile_write(&f->mf, (void *)buf, buflen, &nbytes);
         if (ret) {
                 fprintf(stderr, "Error writing commit record.\n");
                 ret = SDB_IOERROR;
@@ -300,7 +305,7 @@ int zs_write_commit_record(struct zsdb_priv *priv)
         /* assert(nbytes == buflen); */
 
         /* Flush the change to disk */
-        ret = mappedfile_flush(&priv->factive.mf);
+        ret = mappedfile_flush(&f->mf);
         if (ret) {
                 /* TODO: try again before giving up */
                 fprintf(stderr, "Error flushing commit record to disk.\n");
@@ -309,5 +314,59 @@ int zs_write_commit_record(struct zsdb_priv *priv)
         }
 
 done:
+        return ret;
+}
+
+int zs_write_delete_record(struct zsdb_file *f,
+                           unsigned char *key, size_t keylen)
+{
+        int ret = SDB_OK;
+        unsigned char *dbuf;
+        size_t dbuflen, mfsize, nbytes;
+
+        assert(f);
+
+        if (!f->is_open)
+                return SDB_INTERNAL;
+
+        ret = zs_prepare_delete_key_buf(key, keylen, &dbuf, &dbuflen);
+        if (ret != SDB_OK) {
+                return SDB_IOERROR;
+        }
+
+        /* Get the current mappedfile size */
+        ret = mappedfile_size(&f->mf, &mfsize);
+        if (ret) {
+                fprintf(stderr, "Could not get mappedfile size\n");
+                goto done;
+        }
+
+        /* write delete buffer */
+        ret = mappedfile_write(&f->mf, (void *)dbuf, dbuflen, &nbytes);
+        if (ret) {
+                fprintf(stderr, "Error writing key\n");
+                ret = SDB_IOERROR;
+                goto done;
+        }
+
+        /* assert(nbytes == keybuflen); */
+
+        /* If we failed writing the delete buffer, then restore the db file to
+         * the original size we had before updating */
+        if (ret != SDB_OK) {
+                mappedfile_truncate(&f->mf, mfsize);
+        }
+
+        /* Flush the change to disk */
+        ret = mappedfile_flush(&f->mf);
+        if (ret) {
+                /* TODO: try again before giving up */
+                fprintf(stderr, "Error flushing data to disk.\n");
+                ret = SDB_IOERROR;
+                goto done;
+        }
+
+done:
+        xfree(dbuf);
         return ret;
 }

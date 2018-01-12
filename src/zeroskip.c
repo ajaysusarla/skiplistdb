@@ -36,10 +36,12 @@
 #define ALIGN64(x) (((x) + 7ULL) & ~7ULL)
 #define VALID64(x) (((x) & 7ULL) == 0ULL)
 
-extern int zs_write_keyval_record(struct zsdb_priv *priv,
+extern int zs_write_keyval_record(struct zsdb_file *f,
                                   unsigned char *key, size_t keylen,
                                   unsigned char *data, size_t datalen);
-extern int zs_write_commit_record(struct zsdb_priv *priv);
+extern int zs_write_delete_record(struct zsdb_file *f,
+                                  unsigned char *key, size_t keylen);
+extern int zs_write_commit_record(struct zsdb_file *f);
 
 /**
  ** Private functions
@@ -604,7 +606,7 @@ static int zs_add(struct skiplistdb *db,
            committed */
         crc32_begin(&priv->factive.mf);
 
-        ret = zs_write_keyval_record(priv, key, keylen, data, datalen);
+        ret = zs_write_keyval_record(&priv->factive, key, keylen, data, datalen);
 
         return ret;
 }
@@ -613,6 +615,24 @@ static int zs_remove(struct skiplistdb *db,
               unsigned char *key, size_t keylen,
               struct txn **tid, int force)
 {
+        int ret = SDB_OK;
+        struct zsdb_priv *priv;
+
+        assert(db);
+        assert(key);
+        assert(db->priv);
+
+        priv = db->priv;
+
+        if (!priv->is_open && !priv->factive.is_open)
+                return SDB_ERROR;
+
+        /* Start computing the crc32. Will end when the transaction is
+           committed */
+        crc32_begin(&priv->factive.mf);
+
+        ret = zs_write_delete_record(&priv->factive, key, keylen);
+
         return SDB_NOTIMPLEMENTED;
 }
 
@@ -640,7 +660,7 @@ static int zs_commit(struct skiplistdb *db,
         if (!priv->is_open)
                 return SDB_ERROR;
 
-        ret = zs_write_commit_record(priv);
+        ret = zs_write_commit_record(&priv->factive);
 
         return ret;
 }
