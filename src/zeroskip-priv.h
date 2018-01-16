@@ -17,6 +17,12 @@
 
 #include <uuid/uuid.h>
 
+/* Sizes */
+#define MB       (1 << 20)
+#define TWOMB    (2 << 20)
+#define THREEMB  (3 << 20)
+#define FOURMB   (4 << 20)
+
 /*
  * Zeroskip db files have the following file naming scheme:
  *   zeroskip-$(UUID)-$(index)                     - for an unpacked file

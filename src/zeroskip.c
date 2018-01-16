@@ -58,6 +58,26 @@ static inline int rec_offset(uint8_t type, size_t datalen)
         }
 }
 
+static int zs_file_finalize_active(struct zsdb_priv *priv)
+{
+        int ret = SDB_OK;
+
+        /* TODO
+           This function will do the following:
+            1) Flush active file
+            2) Open a temporary file - the finalized file
+               which name format: zeroskip-<uuid>-<curidx>-<curidx>
+            3) Write the zeroskip header
+            4) Write all keys (Add details,how do we add Val Offset?)
+            5) Write all values
+            6) Compute CRC32 for the data and write a commit record
+            7) Write the pointers in sorted order at the end
+            8) Write a final commit record
+         */
+
+        return ret;
+}
+
 static void zsdb_file_free(struct zsdb_file *file)
 {
         if (file) {
@@ -591,6 +611,7 @@ static int zs_add(struct skiplistdb *db,
 {
         int ret = SDB_OK;
         struct zsdb_priv *priv;
+        size_t mf_size;
 
         assert(db);
         assert(key);
@@ -607,6 +628,13 @@ static int zs_add(struct skiplistdb *db,
         crc32_begin(&priv->factive.mf);
 
         ret = zs_write_keyval_record(&priv->factive, key, keylen, data, datalen);
+
+        /* Check size and finalize if necessary */
+        mappedfile_size(&priv->factive.mf, &mf_size);
+        if (mf_size >= TWOMB) {
+                zs_file_finalize_active(priv);
+        }
+
 
         return ret;
 }

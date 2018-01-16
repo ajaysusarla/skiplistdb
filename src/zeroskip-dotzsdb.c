@@ -146,3 +146,53 @@ fail1:
         cstring_release(&dotzsdbfname);
         return ret;
 }
+
+/*
+ * zs_dotzsdb_update_index():
+ * Updates the current index in the .zsdb file.
+ */
+int zs_dotzsdb_update_index(struct zsdb_priv *priv, uint32_t idx)
+{
+        struct mappedfile *mf;
+        size_t mfsize;
+        struct dotzsdb *dothdr;
+        int ret = 1;
+
+        /* The filename */
+        cstring_dup(&priv->dbdir, &dotzsdbfname);
+        cstring_addch(&dotzsdbfname, '/');
+        cstring_addstr(&dotzsdbfname, DOTZSDB_FNAME);
+
+        if (mappedfile_open(dotzsdbfname.buf, MAPPEDFILE_RD, &mf) != 0) {
+                fprintf(stderr, "Could not open %s!\n", dotzsdbfname.buf);
+                ret = 0;
+                goto fail1;
+        }
+
+        mappedfile_size(&mf, &mfsize);
+
+        if (mfsize < DOTZSDB_SIZE) {
+                fprintf(stderr, "File too small to be zeroskip DB: %zu.\n",
+                        mfsize);
+                ret = 0;
+                goto fail2;
+       }
+
+        dothdr = (struct dotzsdb *)mf->ptr;
+        if (dothdr->signature == ZS_SIGNATURE) {
+                /* Update the index */
+                dothdr->curidx = hton32(idx);
+                priv->dotzsdb.curidx = idx;
+        } else {
+                fprintf(stderr, "Invalid zeroskip DB %s.\n",
+                        dotzsdbfname.buf);
+                ret = 0;
+                goto fail2;
+        }
+
+fail2:
+        mappedfile_close(&mf);
+fail1:
+        cstring_release(&dotzsdbfname);
+        return ret;
+}
