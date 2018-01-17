@@ -36,13 +36,6 @@
 #define ALIGN64(x) (((x) + 7ULL) & ~7ULL)
 #define VALID64(x) (((x) & 7ULL) == 0ULL)
 
-extern int zs_write_keyval_record(struct zsdb_file *f,
-                                  unsigned char *key, size_t keylen,
-                                  unsigned char *data, size_t datalen);
-extern int zs_write_delete_record(struct zsdb_file *f,
-                                  unsigned char *key, size_t keylen);
-extern int zs_write_commit_record(struct zsdb_file *f);
-
 /**
  ** Private functions
  **/
@@ -58,9 +51,14 @@ static inline int rec_offset(uint8_t type, size_t datalen)
         }
 }
 
+static int create_active_filename(struct zsdb_priv *priv)
+{
+}
+
 static int zs_file_finalize_active(struct zsdb_priv *priv)
 {
         int ret = SDB_OK;
+        uint32_t curidx, newidx;
 
         /* TODO
            This function will do the following:
@@ -74,6 +72,13 @@ static int zs_file_finalize_active(struct zsdb_priv *priv)
             7) Write the pointers in sorted order at the end
             8) Write a final commit record
          */
+        curidx = priv->dotzsdb.curidx;
+        newidx = curidx + 1;
+
+        mappedfile_flush(&priv->factive.mf);
+        mappedfile_close(&priv->factive.mf);
+
+        zs_dotzsdb_update_index(priv, newidx);
 
         return ret;
 }
@@ -612,6 +617,7 @@ static int zs_add(struct skiplistdb *db,
         int ret = SDB_OK;
         struct zsdb_priv *priv;
         size_t mf_size;
+        struct record *rec;
 
         assert(db);
         assert(key);
@@ -622,6 +628,10 @@ static int zs_add(struct skiplistdb *db,
 
         if (!priv->is_open && !priv->factive.is_open)
                 return SDB_ERROR;
+
+        /* Add to the Btree */
+        rec = record_new(key, keylen, data, datalen);
+        btree_insert(priv->btree, rec);
 
         /* Start computing the crc32. Will end when the transaction is
            committed */
@@ -634,7 +644,6 @@ static int zs_add(struct skiplistdb *db,
         if (mf_size >= TWOMB) {
                 zs_file_finalize_active(priv);
         }
-
 
         return ret;
 }

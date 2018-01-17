@@ -156,6 +156,8 @@ int zs_dotzsdb_update_index(struct zsdb_priv *priv, uint32_t idx)
         struct mappedfile *mf;
         size_t mfsize;
         struct dotzsdb *dothdr;
+        unsigned char *sptr;
+        cstring dotzsdbfname = CSTRING_INIT;
         int ret = 1;
 
         /* The filename */
@@ -184,11 +186,13 @@ int zs_dotzsdb_update_index(struct zsdb_priv *priv, uint32_t idx)
                 dothdr->curidx = hton32(idx);
                 priv->dotzsdb.curidx = idx;
         } else {
-                fprintf(stderr, "Invalid zeroskip DB %s.\n",
+                fprintf(stderr, "Invalid zeroskip DB %s Failed updating index.\n",
                         dotzsdbfname.buf);
                 ret = 0;
                 goto fail2;
         }
+
+        mappedfile_flush(&mf);
 
 fail2:
         mappedfile_close(&mf);

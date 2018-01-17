@@ -233,5 +233,16 @@ extern int zs_header_validate(struct zsdb_file *f);
 /* zeroskip-dotzsdb.c */
 extern int zs_dotzsdb_create(struct zsdb_priv *priv);
 extern int zs_dotzsdb_validate(struct zsdb_priv *priv);
+extern int zs_dotzsdb_update_index(struct zsdb_priv *priv, uint32_t idx);
+
+
+/* zeroskip-record.c */
+extern int zs_write_keyval_record(struct zsdb_file *f,
+                                  unsigned char *key, size_t keylen,
+                                  unsigned char *data, size_t datalen);
+extern int zs_write_delete_record(struct zsdb_file *f,
+                                  unsigned char *key, size_t keylen);
+extern int zs_write_commit_record(struct zsdb_file *f);
+
 
 #endif  /* _ZEROSKIP_PRIV_H_ */
