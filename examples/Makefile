@@ -14,6 +14,10 @@ BT_OBJS =           	\
 	bt-example.o	\
 	$(NULL)
 
+MF_OBJS =           	\
+	mf-example.o	\
+	$(NULL)
+
 STRARRAY_OBJS =           	\
 	strarray-example.o	\
 	$(NULL)
@@ -33,6 +37,7 @@ ZS_HDRS =           	\
 TWOSKIP_EXAMPLE=ts-example
 ZEROSKIP_EXAMPLE=zs-example
 BT_EXAMPLE=bt-example
+MF_EXAMPLE=mf-example
 STRARRAY_EXAMPLE=strarray-example
 CONFIG_EXAMPLE=config-example
 
@@ -42,7 +47,7 @@ TS_LIBS+=
 MF_LIBS+=
 STRARRAY_LIBS+=
 
-all: $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE) $(BT_EXAMPLE) $(STRARRAY_EXAMPLE) $(CONFIG_EXAMPLE)
+all: $(TWOSKIP_EXAMPLE) $(ZEROSKIP_EXAMPLE) $(BT_EXAMPLE) $(MF_EXAMPLE) $(STRARRAY_EXAMPLE) $(CONFIG_EXAMPLE)
 
 Makefile.dep:
 	$(SDB_CC) -MM *.c > Makefile.dep 2> /dev/null || true
@@ -60,6 +65,9 @@ $(ZEROSKIP_EXAMPLE): $(ZS_OBJS)
 
 $(BT_EXAMPLE): $(BT_OBJS)
 	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE) $(BT_LIBS)
+
+$(MF_EXAMPLE): $(MF_OBJS)
+	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE) $(MF_LIBS)
 
 $(STRARRAY_EXAMPLE): $(STRARRAY_OBJS)
 	$(SDB_LD) -I$(SKIPLISTDB_INC) -o $@ $^ ../src/$(AR_LIB_FILE) $(STRARRAY_LIBS)

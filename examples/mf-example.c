@@ -5,78 +5,76 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdint.h>
+#include <uuid/uuid.h>
 
-static const char *fname = "/tmp/list.dat";
-static const int MAX_ELEMENTS = 10;
 
-struct ldata {
-        size_t len;
-        char *data;
-} arr[10] = {
-        { 3, "abc" },
-        { 3, "def" },
-        { 3, "ghi" },
-        { 3, "jkl" },
-        { 3, "mno" },
-        { 3, "pqr" },
-        { 3, "stu" },
-        { 3, "vwx" },
-        { 3, "yz1" },
-        { 3, "foo" },
-};
-
-struct pointers {
-        int count;
-        size_t *offsets;
-};
+static const char *fname = "/tmp/mf.data";
 
 
 int main(int argc __attribute__((unused)), char **argv __attribute__((unused)))
 {
-        struct mappedfile *mfp;
-        struct pointers *ptrs;
-        int i, count;;
+        struct mappedfile *mf;
+        uuid_t uuid;
+        unsigned char stackbuf[64];
+        unsigned char *sptr;
+        char uuidstr[36];
+        size_t nbytes;
+        int ret = EXIT_SUCCESS;
 
-        ptrs = xmalloc(sizeof(struct pointers));
-        memset(ptrs, 0, sizeof(struct pointers));
+        memset(&stackbuf, 0, 64);
+        sptr = stackbuf;
 
-        mappedfile_open(fname, MAPPEDFILE_WR_CR, &mfp);
+        /* Generate a new uuid */
+        uuid_generate(uuid);
+        uuid_unparse_lower(uuid, uuidstr);
 
-        for (i = 0; i < MAX_ELEMENTS; i++) {
-                unsigned char stackbuf[20];
-                size_t written = 0, siz = 0;
-                unsigned char *p;
+        /* Index */
+        *((uint32_t *)sptr) = hton32(0);
+        sptr += sizeof(uint32_t);
 
-                memset(&stackbuf, 0, 10);
-                p = stackbuf;
+        /* UUID */
+        memcpy(sptr, &uuidstr, 36);
+        sptr += 36;
 
-                memcpy(p, &arr[i].len, sizeof(arr[i].len));
-                p += sizeof(size_t);
-                siz += sizeof(size_t);
-
-                memcpy(p, &arr[i].data, sizeof(arr[i].data));
-                p += sizeof(arr[i].data);
-                siz += sizeof(arr[i].data);
-
-                mappedfile_write(&mfp, (void *)&stackbuf, siz, &written);
-                printf("siz:%zu, offset:%zu, written:%zu\n", siz, mfp->offset, written);
-
-                if (root) {
-                        cur->next = node;
-                        cur = node;
-                } else {
-                        root = node;
-                        cur = node;
-                }
+        /* Write to file */
+        if (mappedfile_open(fname, MAPPEDFILE_RW_CR, &mf) != 0) {
+                fprintf(stderr, "Could not create %s!", fname);
+                ret = EXIT_FAILURE;
+                goto fail1;
         }
 
-        cur = root;
-        while(cur) {
-                printf("offset: %zu\n", cur->offset);
-                cur = cur->next;
+        if (mappedfile_write(&mf, &stackbuf, 64, &nbytes) != 0) {
+                fprintf(stderr, "Could not write to file %s!",
+                        fname);
+                ret = EXIT_FAILURE;
+                goto fail2;
         }
 
-        mappedfile_close(&mfp);
+        mappedfile_flush(&mf);
 
-        exit(EXIT_SUCCESS);
+        printf("%zu bytes written to %s.\n", nbytes, fname);
+
+        mappedfile_close(&mf);
+
+        printf("Sleeping for 20 seconds. Run `hexdump %s`\n", fname);
+        sleep(20);
+
+        /* Update Index in file */
+        if (mappedfile_open(fname, MAPPEDFILE_RW_CR, &mf) != 0) {
+                fprintf(stderr, "Could not create %s!", fname);
+                ret = EXIT_FAILURE;
+                goto fail1;
+        }
+
+        sptr = mf->ptr;
+        *((uint32_t *)sptr) = hton32(29);
+
+        mappedfile_flush(&mf);
+
+fail2:
+        mappedfile_close(&mf);
+
+fail1:
+        exit(ret);
 }
