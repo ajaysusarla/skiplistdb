@@ -100,12 +100,11 @@ void xfree(void *ptr)
  */
 int xmkdir(const char *path, mode_t mode)
 {
-        int ret, err;
+        int ret;
         struct stat sb = {0};
 
         return mkdir(path, mode);
         ret = stat(path, &sb);
-        err = errno;
         if (ret == -1) {        /* The directory doesn't exist, create */
                 return mkdir(path, mode);
         }

@@ -156,7 +156,6 @@ int zs_dotzsdb_update_index(struct zsdb_priv *priv, uint32_t idx)
         struct mappedfile *mf;
         size_t mfsize;
         struct dotzsdb *dothdr;
-        unsigned char *sptr;
         cstring dotzsdbfname = CSTRING_INIT;
         int ret = 1;
 
