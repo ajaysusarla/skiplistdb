@@ -294,13 +294,14 @@ static int zs_dump_active_record(struct zsdb_file *factive, size_t *offset)
         break;
         case REC_TYPE_LONG_KEY:
         {
-                uint64_t len;
-                uint64_t val_offset;
-                unsigned char *data;
+                uint64_t len = read_be64(fptr + 8);
+                uint64_t val_offset = read_be64(fptr + 16);
+                unsigned char *data = fptr + ZS_KEY_BASE_REC_SIZE;
                 uint64_t i;
                 for (i = 0; i < len; i++) {
                         printf("%c", data[i]);
                 }
+                printf("\n");
                 *offset = *offset + ZS_KEY_BASE_REC_SIZE + roundup64bits(len);
         }
         break;
@@ -317,7 +318,17 @@ static int zs_dump_active_record(struct zsdb_file *factive, size_t *offset)
         }
         break;
         case REC_TYPE_LONG_VALUE:
-                break;
+        {
+                uint64_t len = read_be64(fptr + 8);
+                unsigned char *data = fptr + ZS_VAL_BASE_REC_SIZE;
+                uint32_t i;
+                for (i = 0; i < len; i++) {
+                        printf("%c", data[i]);
+                }
+                printf("\n");
+                *offset = *offset + ZS_VAL_BASE_REC_SIZE + roundup64bits(len);
+        }
+        break;
         case REC_TYPE_COMMIT:
                 *offset = *offset + sizeof(struct zs_short_commit);
                 printf("--short--\n");
