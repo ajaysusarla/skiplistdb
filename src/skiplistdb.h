@@ -27,8 +27,7 @@ typedef enum {
 } DBState;
 
 typedef enum {
-        DB_DUMP_RECS,
-        DB_DUMP_RECS_PTRS,
+        DB_DUMP_ACTIVE,
         DB_DUMP_ALL,
 } DBDumpLevel;
 
@@ -115,6 +114,7 @@ struct skiplistdb {
         unsigned int initialised:1;
         void *priv;
 };
+
 const struct skiplistdb_operations base_ops;
 #define SKIPLISTDB_INIT {NULL, INVALID_DB, &base_ops, 0, NULL }
 

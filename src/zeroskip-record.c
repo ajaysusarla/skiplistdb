@@ -97,7 +97,7 @@ static int zs_prepare_val_buf(unsigned char *val, size_t vallen,
 
         vbuf = xcalloc(1, vbuflen);
 
-        if (type == REC_TYPE_KEY) {
+        if (type == REC_TYPE_VALUE) {
                 /* The first 3 fields in a short key make up 64 bits */
                 uint64_t val = 0;
                 val = ((uint64_t)vallen & ((1UL << 32) - 1));  /* Val length */

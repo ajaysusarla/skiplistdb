@@ -51,8 +51,21 @@ static inline int rec_offset(uint8_t type, size_t datalen)
         }
 }
 
-static int create_active_filename(struct zsdb_priv *priv)
+/* zs_create_active_filename():
+ * Generates a new filename for the active file
+ */
+static void zs_create_active_filename(struct zsdb_priv *priv, cstring *fname)
 {
+        char index[11] = { 0 };
+
+        snprintf(index, 20, "%d", priv->dotzsdb.curidx);
+
+        cstring_dup(&priv->dbdir, fname);
+        cstring_addch(fname, '/');
+        cstring_addstr(fname, ZS_FNAME_PREFIX);
+        cstring_add(fname, priv->dotzsdb.uuidstr, UUID_STRLEN);
+        cstring_addch(fname, '-');
+        cstring_addstr(fname, index);
 }
 
 static int zs_file_finalize_active(struct zsdb_priv *priv)
@@ -79,6 +92,7 @@ static int zs_file_finalize_active(struct zsdb_priv *priv)
         mappedfile_close(&priv->factive.mf);
 
         zs_dotzsdb_update_index(priv, newidx);
+        /* TODO: More to come... This is *incomplete* */
 
         return ret;
 }
@@ -240,76 +254,77 @@ static int setup_db_dir(struct skiplistdb *db)
 
         /* We seem to have a directory with a valid .zsdb.
            Now set the active file name */
-        snprintf(index, 20, "%d", priv->dotzsdb.curidx);
+        zs_create_active_filename(priv, &priv->factive.fname);
 
         priv->factive.ftype = DB_FTYPE_ACTIVE;
         priv->factive.is_open = 0;
 
-        cstring_dup(&priv->dbdir, &priv->factive.fname);
-        cstring_addch(&priv->factive.fname, '/');
-        cstring_addstr(&priv->factive.fname, ZS_FNAME_PREFIX);
-        cstring_add(&priv->factive.fname, priv->dotzsdb.uuidstr, UUID_STRLEN);
-        cstring_addch(&priv->factive.fname, '-');
-        cstring_addstr(&priv->factive.fname, index);
-
         return SDB_OK;
 }
 
-
-/* zs_dump_record():
- * Should always be called a read lock
- */
-static int zs_dump_record(struct zsdb_priv *priv, size_t *offset)
+static int zs_dump_active_record(struct zsdb_file *factive, size_t *offset)
 {
-#if 0
-        unsigned char *bptr = priv->mf->ptr;
-        unsigned char *fptr = bptr + *offset;
-        enum record_t rectype;
+        unsigned char *bptr;
+        unsigned char *fptr;
+        uint8_t rectype;
+        uint64_t val;
 
+        if (!factive->is_open)
+                return SDB_IOERROR;
 
-        rectype = fptr[0];
+        bptr = factive->mf->ptr;
+        fptr = bptr + *offset;
+
+        val = read_be64(fptr);
+        rectype = val >> 56;
 
         switch(rectype) {
         case REC_TYPE_KEY:
         {
-                uint16_t len = ntoh16(*((uint16_t *)(fptr + 1)));
-                uint64_t val_offset = ntoh64(*((uint64_t *)(fptr + 3)));
-                unsigned char *data = (unsigned char *)(uint8_t *)(fptr + 11);
-                int i;
-                printf(" key: ");
+                uint16_t len = val >> 40;
+                uint64_t val_offset = val & ((1ULL >> 40) - 1);
+                unsigned char *data = fptr + ZS_KEY_BASE_REC_SIZE;
+                uint16_t i;
                 for (i = 0; i < len; i++) {
                         printf("%c", data[i]);
                 }
-                printf(" (%d)\n", len);
-                *offset = *offset + sizeof(struct zs_short_key) +
-                        (roundup64(len * 8) / 8);
+                printf("\n");
+                *offset = *offset + ZS_KEY_BASE_REC_SIZE + roundup64bits(len);
         }
-                break;
+        break;
         case REC_TYPE_LONG_KEY:
-                printf("LONG KEY\n");
-                break;
-        case REC_TYPE_SHORT_VALUE:
         {
-                uint32_t len = ntoh32(*((uint32_t *)(fptr + 1)));
-                unsigned char *data = (unsigned char *)(uint8_t *)(fptr + 5);
-                uint32_t i;
-                printf(" val: ");
+                uint64_t len;
+                uint64_t val_offset;
+                unsigned char *data;
+                uint64_t i;
                 for (i = 0; i < len; i++) {
                         printf("%c", data[i]);
                 }
-                printf(" (%d)\n\n", len);
-                *offset = *offset + sizeof(struct zs_short_val) +
-                        (roundup64(len * 8) / 8);
+                *offset = *offset + ZS_KEY_BASE_REC_SIZE + roundup64bits(len);
         }
-                break;
+        break;
+        case REC_TYPE_VALUE:
+        {
+                uint32_t len = val & ((1UL >> 32) - 1);
+                unsigned char *data = fptr + ZS_VAL_BASE_REC_SIZE;
+                uint32_t i;
+                for (i = 0; i < len; i++) {
+                        printf("%c", data[i]);
+                }
+                printf("\n");
+                *offset = *offset + ZS_VAL_BASE_REC_SIZE + roundup64bits(len);
+        }
+        break;
         case REC_TYPE_LONG_VALUE:
-                printf("LONG VALUE\n");
                 break;
-        case REC_TYPE_SHORT_COMMIT:
+        case REC_TYPE_COMMIT:
                 *offset = *offset + sizeof(struct zs_short_commit);
+                printf("--short--\n");
                 break;
         case REC_TYPE_LONG_COMMIT:
                 *offset = *offset + sizeof(struct zs_long_commit);
+                printf("--long--\n");
                 break;
         case REC_TYPE_2ND_HALF_COMMIT:
                 break;
@@ -325,8 +340,27 @@ static int zs_dump_record(struct zsdb_priv *priv, size_t *offset)
                 break;
         }
 
-#endif
         return SDB_OK;
+}
+
+static int zs_dump_active_records(struct zsdb_priv *priv)
+{
+        int ret = SDB_OK;
+        size_t dbsize = 0, offset = ZS_HDR_SIZE;
+
+        mappedfile_size(&priv->factive.mf, &dbsize);
+        if (dbsize == 0 || dbsize <= ZS_HDR_SIZE) {
+                fprintf(stderr, "No records in zeroskip DB\n");
+                return SDB_IOERROR;
+        }
+
+        while (offset < dbsize) {
+                ret = zs_dump_active_record(&priv->factive, &offset);
+        }
+
+        printf("----\n");
+
+        return ret;
 }
 
 static int zs_init(DBType type _unused_, struct skiplistdb **db,
@@ -364,7 +398,7 @@ static int load_one_unpacked_record(struct zsdb_priv *priv, size_t *offset)
         unsigned char *key, *val;
         uint8_t rectype;
 
-        rectype = fptr[0];
+        rectype = read_be64(fptr) & (1ULL >> 56);
         switch(rectype) {
         case REC_TYPE_KEY:
                 break;
@@ -500,7 +534,7 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
                 goto done;
         }
 
-        /* Load the records into a Btree */
+        /* Load records from active file into a Btree */
         /* load_unpacked_records_to_btree(priv, mf_size); */
 
         /* Seek to the end of the file, that's where the
@@ -712,7 +746,6 @@ static int zs_dump(struct skiplistdb *db,
                    DBDumpLevel level _unused_)
 {
         int ret = SDB_OK;
-#if 0
         struct zsdb_priv *priv;
         size_t dbsize = 0, offset = ZS_HDR_SIZE;
 
@@ -724,24 +757,16 @@ static int zs_dump(struct skiplistdb *db,
         if (!priv->is_open)
                 return SDB_ERROR;
 
-        printf("Zeroskip HEADER:\n signature=0x%" PRIx64 "\n version=%u\n",
-               priv->header.signature,
-               priv->header.version);
-
-        mappedfile_size(&priv->mf, &dbsize);
-        if (dbsize == 0 || dbsize <= ZS_HDR_SIZE) {
-                fprintf(stderr, "No records in zeroskip DB\n");
-                return SDB_IOERROR;
+        if (level == DB_DUMP_ACTIVE) {
+                ret = zs_dump_active_records(priv);
+        } else if (level == DB_DUMP_ALL) {
+                fprintf(stderr, "Cannot dump all records yet!\n");
+                return SDB_INTERNAL;
+        } else {
+                fprintf(stderr, "Invalid option to dump.\n");
+                return SDB_ERROR;
         }
 
-        printf("Records:\n");
-        while (offset < dbsize) {
-                size_t recsize = 0;
-                zs_dump_record(priv, &offset);
-        }
-
-        printf("----\n");
-#endif
         return ret;
 }
 

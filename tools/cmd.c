@@ -28,7 +28,7 @@ int cmd_parse_config(const char *cfile _unused_)
 DBDumpLevel parse_dump_level_string(const char *dblevel)
 {
         if (!dblevel || strcmp(dblevel, "active") == 0)
-                return DB_DUMP_RECS;
+                return DB_DUMP_ACTIVE;
         else if (strcmp(dblevel, "all") == 0)
                 return DB_DUMP_ALL;
         else
