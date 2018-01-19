@@ -410,6 +410,35 @@ done:
         return ret;
 }
 
+int zs_read_key(struct zsdb_file *f, size_t offset, struct zs_key *key)
+{
+        unsigned char *bptr;
+        unsigned char *fptr;
+        uint64_t val;
+
+        bptr = f->mf->ptr;
+        fptr = bptr + offset;
+
+        val = read_be64(fptr);
+        key->base.type = val >> 56;
+
+        if (key->base.type == REC_TYPE_KEY) {
+                key->base.slen = val >> 40;
+                key->base.sval_offset = val & ((1ULL >> 40) - 1);
+                key->base.llen = 0;
+                key->base.lval_offset = 0;
+        } else if (key->base.type == REC_TYPE_LONG_KEY) {
+                key->base.slen = 0;
+                key->base.sval_offset = 0;
+                key->base.llen = read_be64(fptr + 8);
+                key->base.llen = read_be64(fptr + 16);
+        }
+
+        key->data = fptr + ZS_KEY_BASE_REC_SIZE;
+
+        return SDB_OK;
+}
+
 int zs_write_delete_record(struct zsdb_file *f,
                            unsigned char *key, size_t keylen)
 {
