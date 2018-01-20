@@ -13,6 +13,9 @@
 
 #include <zlib.h>
 
+int zs_read_key_rec(struct zsdb_file *f, size_t *offset, struct zs_key *key);
+int zs_read_val_rec(struct zsdb_file *f, size_t *offset, struct zs_val *val);
+
 /**
  ** Private functions
  **/
@@ -410,31 +413,66 @@ done:
         return ret;
 }
 
-int zs_read_key(struct zsdb_file *f, size_t offset, struct zs_key *key)
+int zs_read_key_rec(struct zsdb_file *f, size_t *offset, struct zs_key *key)
 {
         unsigned char *bptr;
         unsigned char *fptr;
-        uint64_t val;
+        uint64_t data;
 
         bptr = f->mf->ptr;
-        fptr = bptr + offset;
+        fptr = bptr + *offset;
 
-        val = read_be64(fptr);
-        key->base.type = val >> 56;
+        data = read_be64(fptr);
+        key->base.type = data >> 56;
+
+        *offset += ZS_KEY_BASE_REC_SIZE;
 
         if (key->base.type == REC_TYPE_KEY) {
-                key->base.slen = val >> 40;
-                key->base.sval_offset = val & ((1ULL >> 40) - 1);
+                key->base.slen = data >> 40;
+                key->base.sval_offset = data & ((1ULL >> 40) - 1);
                 key->base.llen = 0;
                 key->base.lval_offset = 0;
+                *offset += roundup64bits(key->base.slen);
         } else if (key->base.type == REC_TYPE_LONG_KEY) {
                 key->base.slen = 0;
                 key->base.sval_offset = 0;
                 key->base.llen = read_be64(fptr + 8);
-                key->base.llen = read_be64(fptr + 16);
+                key->base.lval_offset = read_be64(fptr + 16);
+                *offset += roundup64bits(key->base.llen);
         }
 
         key->data = fptr + ZS_KEY_BASE_REC_SIZE;
+
+        return SDB_OK;
+}
+
+int zs_read_val_rec(struct zsdb_file *f, size_t *offset, struct zs_val *val)
+{
+        unsigned char *bptr;
+        unsigned char *fptr;
+        uint64_t data;
+
+        bptr = f->mf->ptr;
+        fptr = bptr + *offset;
+
+        data = read_be64(fptr);
+        val->base.type = data >> 56;
+
+        *offset += ZS_VAL_BASE_REC_SIZE;
+
+        if (val->base.type == REC_TYPE_VALUE) {
+                val->base.slen = data & ((1UL >> 32) - 1);
+                val->base.nullpad = 0;
+                val->base.llen = 0;
+                *offset += roundup64bits(val->base.slen);
+        } else if (val->base.type == REC_TYPE_LONG_VALUE) {
+                val->base.slen = 0;
+                val->base.nullpad = 0;
+                val->base.llen = read_be64(fptr + 8);
+                *offset += roundup64bits(val->base.llen);
+        }
+
+        val->data = fptr + ZS_VAL_BASE_REC_SIZE;
 
         return SDB_OK;
 }
