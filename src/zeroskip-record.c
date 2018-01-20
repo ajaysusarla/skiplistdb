@@ -196,52 +196,50 @@ static int zs_dump_active_record(struct zsdb_file *factive, size_t *offset)
         switch(rectype) {
         case REC_TYPE_KEY:
         {
-                uint16_t len = val >> 40;
-                uint64_t val_offset = val & ((1ULL >> 40) - 1);
-                unsigned char *data = fptr + ZS_KEY_BASE_REC_SIZE;
                 uint16_t i;
-                for (i = 0; i < len; i++) {
-                        printf("%c", data[i]);
+                struct zs_key key;
+
+                zs_read_key_rec(factive, offset, &key);
+                for (i = 0; i < key.base.slen; i++) {
+                        printf("%c", key.data[i]);
                 }
                 printf("\n");
-                *offset = *offset + ZS_KEY_BASE_REC_SIZE + roundup64bits(len);
         }
         break;
         case REC_TYPE_LONG_KEY:
         {
-                uint64_t len = read_be64(fptr + 8);
-                uint64_t val_offset = read_be64(fptr + 16);
-                unsigned char *data = fptr + ZS_KEY_BASE_REC_SIZE;
                 uint64_t i;
-                for (i = 0; i < len; i++) {
-                        printf("%c", data[i]);
+                struct zs_key key;
+
+                zs_read_key_rec(factive, offset, &key);
+                for (i = 0; i < key.base.llen; i++) {
+                        printf("%c", key.data[i]);
                 }
                 printf("\n");
-                *offset = *offset + ZS_KEY_BASE_REC_SIZE + roundup64bits(len);
         }
         break;
         case REC_TYPE_VALUE:
         {
-                uint32_t len = val & ((1UL >> 32) - 1);
-                unsigned char *data = fptr + ZS_VAL_BASE_REC_SIZE;
                 uint32_t i;
-                for (i = 0; i < len; i++) {
-                        printf("%c", data[i]);
+                struct zs_val val;
+
+                zs_read_val_rec(factive, offset, &val);
+                for (i = 0; i < val.base.slen; i++) {
+                        printf("%c", val.data[i]);
                 }
                 printf("\n");
-                *offset = *offset + ZS_VAL_BASE_REC_SIZE + roundup64bits(len);
         }
         break;
         case REC_TYPE_LONG_VALUE:
         {
-                uint64_t len = read_be64(fptr + 8);
-                unsigned char *data = fptr + ZS_VAL_BASE_REC_SIZE;
                 uint32_t i;
-                for (i = 0; i < len; i++) {
-                        printf("%c", data[i]);
+                struct zs_val val;
+
+                zs_read_val_rec(factive, offset, &val);
+                for (i = 0; i < val.base.llen; i++) {
+                        printf("%c", val.data[i]);
                 }
                 printf("\n");
-                *offset = *offset + ZS_VAL_BASE_REC_SIZE + roundup64bits(len);
         }
         break;
         case REC_TYPE_COMMIT:
