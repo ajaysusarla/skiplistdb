@@ -304,10 +304,10 @@ static int load_one_unpacked_record(struct zsdb_priv *priv, size_t *offset)
         case REC_TYPE_LONG_VALUE:
                 break;
         case REC_TYPE_COMMIT:
-                *offset = *offset + sizeof(struct zs_short_commit);
+                *offset = *offset + ZS_SHORT_COMMIT_REC_SIZE;
                 break;
         case REC_TYPE_LONG_COMMIT:
-                *offset = *offset + sizeof(struct zs_long_commit);
+                *offset = *offset + ZS_LONG_COMMIT_REC_SIZE;
                 break;
         case REC_TYPE_2ND_HALF_COMMIT:
                 break;
@@ -637,6 +637,27 @@ static int zs_abort(struct skiplistdb *db _unused_,
         return SDB_NOTIMPLEMENTED;
 }
 
+static int print_rec(void *data,
+                     unsigned char *key, size_t keylen,
+                     unsigned char *val, size_t vallen)
+{
+        size_t i;
+
+        for (i = 0; i < keylen; i++) {
+                printf("%c", key[i]);
+        }
+        printf("\n");
+
+        for (i = 0; i < vallen; i++) {
+                printf("%c", val[i]);
+        }
+        printf("\n");
+
+        printf("---\n");
+
+        return 0;
+}
+
 static int zs_dump(struct skiplistdb *db,
                    DBDumpLevel level _unused_)
 {
@@ -652,7 +673,7 @@ static int zs_dump(struct skiplistdb *db,
                 return SDB_ERROR;
 
         if (level == DB_DUMP_ACTIVE) {
-                ret = zs_dump_active_records(priv);
+                ret = zs_active_record_foreach(&priv->factive, print_rec);
         } else if (level == DB_DUMP_ALL) {
                 fprintf(stderr, "Cannot dump all records yet!\n");
                 return SDB_INTERNAL;
