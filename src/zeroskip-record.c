@@ -347,29 +347,56 @@ done:
 int zs_write_commit_record(struct zsdb_file *f)
 {
         int ret = SDB_OK;
-        size_t buflen, nbytes;
+        size_t buflen, nbytes, pos = 0;
         unsigned char buf[24], *ptr;
         uint32_t crc;
-
 
         assert(f);
         if (!f->is_open)
                 return SDB_INTERNAL;
 
         memset(&buf, 0, sizeof(buf));
+        ptr = buf;
 
-        if (f->mf->crc32_data_len > MAX_SHORT_VAL_LEN) {
+        if (f->mf->crc32_data_len > MAX_SHORT_VAL_LEN) { /* long commit */
                 uint32_t lccrc;
+                uint64_t val = 0;
                 struct zs_long_commit lc;
-                buflen = sizeof(struct zs_long_commit);
-                /* TODO: create long commit record */
-        } else {
+
+                lc.type1 = REC_TYPE_LONG_COMMIT;
+                lc.length = f->mf->crc32_data_len;
+                lc.type2 = REC_TYPE_LONG_COMMIT;
+
+                /* Compute CRC32 */
+                lccrc = crc32(0L, Z_NULL, 0);
+                lccrc = crc32(lccrc, (void *)&lc,
+                              sizeof(struct zs_long_commit) - sizeof(uint32_t));
+                crc = crc32_end(&f->mf);
+                lc.crc32 = crc32_combine(crc, lccrc, sizeof(uint32_t));
+
+                /* Create long commit */
+                val = ((uint64_t)lc.type1 & ((1ULL << 56) - 1));
+                write_be64(ptr + pos, val);
+                pos += sizeof(uint64_t);
+
+                write_be64(ptr + pos, lc.length);
+                pos += sizeof(uint64_t);
+
+
+                val = 0;
+                val = ((uint64_t)lc.crc32 & ((1UL << 32) - 1)); /* crc */
+                val |= ((uint64_t)lc.type2 << 56);               /* type */
+                write_be64(ptr + pos, val);
+                pos += sizeof(uint64_t);
+
+                buflen = ZS_LONG_COMMIT_REC_SIZE;
+        } else {                                         /* short commit */
+                uint64_t val = 0;
                 uint32_t sccrc;
                 struct zs_short_commit sc;
 
                 sc.type = REC_TYPE_COMMIT;
                 sc.length = f->mf->crc32_data_len;
-                sc.crc32 = 0;
 
                 /* Compute CRC32 */
                 sccrc = crc32(0L, Z_NULL, 0);
@@ -378,15 +405,13 @@ int zs_write_commit_record(struct zsdb_file *f)
                 crc = crc32_end(&f->mf);
                 sc.crc32 = crc32_combine(crc, sccrc, sizeof(uint32_t));
 
-                /* type */
-                buf[0] = sc.type;
-                /* length TODO: Make it 24 bits */
-                *((uint32_t *)(buf + sizeof(uint8_t))) = hton32(sc.length);
-                /* CRC32 */
-                *((uint32_t *)(buf + sizeof(uint8_t) + sizeof(uint32_t))) =
-                        hton32(sc.crc32);
+                val = ((uint64_t)sc.crc32 & ((1UL << 32) - 1)); /* crc */
+                val |= ((uint64_t)sc.length << 32);             /* length */
+                val |= ((uint64_t)sc.type << 56);               /* type */
+                write_be64(ptr + pos, val);
+                pos += sizeof(uint64_t);
 
-                buflen = sizeof(struct zs_short_commit);
+                buflen = ZS_SHORT_COMMIT_REC_SIZE;
         }
 
         ret = mappedfile_write(&f->mf, (void *)buf, buflen, &nbytes);

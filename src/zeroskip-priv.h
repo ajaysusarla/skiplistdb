@@ -148,7 +148,7 @@ struct zs_short_commit {
 /* Since the structure isn't packed not doing a sizeof */
 #define ZS_SHORT_COMMIT_REC_SIZE 8
 
-struct _packed_ zs_long_commit {
+struct zs_long_commit {
         uint8_t  type1;
         uint64_t padding1 : 56;
         uint64_t length;
