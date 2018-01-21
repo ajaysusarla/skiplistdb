@@ -232,7 +232,7 @@ static int zs_read_val_rec(struct zsdb_file *f, size_t *offset,
 }
 
 static int zs_read_key_val_record(struct zsdb_file *f, size_t *offset,
-                                  foreach_cb *cb)
+                                  foreach_cb *cb, void *cbdata)
 {
         int ret = SDB_OK;
         struct zs_key key;
@@ -256,13 +256,13 @@ static int zs_read_key_val_record(struct zsdb_file *f, size_t *offset,
                 roundup64bits(vallen);
 
         if (cb) {
-                cb(NULL, key.data, keylen, val.data, vallen);
+                cb(cbdata, key.data, keylen, val.data, vallen);
         }
         return ret;
 }
 
 static int zs_read_one_active_record(struct zsdb_file *f, size_t *offset,
-                                     foreach_cb *cb)
+                                     foreach_cb *cb, void *cbdata)
 {
         unsigned char *bptr, *fptr;
         uint64_t data;
@@ -280,7 +280,7 @@ static int zs_read_one_active_record(struct zsdb_file *f, size_t *offset,
         switch(rectype) {
         case REC_TYPE_KEY:
         case REC_TYPE_LONG_KEY:
-                zs_read_key_val_record(f, offset, cb);
+                zs_read_key_val_record(f, offset, cb, cbdata);
                 break;
         case REC_TYPE_VALUE:
         case REC_TYPE_LONG_VALUE:
@@ -536,7 +536,7 @@ done:
         return ret;
 }
 
-int zs_active_record_foreach(struct zsdb_file *f, foreach_cb *cb)
+int zs_active_record_foreach(struct zsdb_file *f, foreach_cb *cb, void *cbdata)
 {
         int ret = SDB_OK;
         size_t dbsize = 0, offset = ZS_HDR_SIZE;
@@ -548,7 +548,7 @@ int zs_active_record_foreach(struct zsdb_file *f, foreach_cb *cb)
         }
 
         while (offset < dbsize) {
-                ret = zs_read_one_active_record(f, &offset, cb);
+                ret = zs_read_one_active_record(f, &offset, cb, cbdata);
         }
 
         return ret;

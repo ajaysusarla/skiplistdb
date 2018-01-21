@@ -283,59 +283,39 @@ static int zs_final(struct skiplistdb *db)
 }
 
 /* load_records_to_btree */
-static int load_one_unpacked_record(struct zsdb_priv *priv, size_t *offset)
+static int load_one_unpacked_record(void *data,
+                                    unsigned char *key, size_t keylen,
+                                    unsigned char *val, size_t vallen)
 {
-        int ret = SDB_OK;
-        unsigned char *bptr = priv->factive.mf->ptr;
-        unsigned char *fptr = bptr + *offset;
-        uint64_t keylen, vallen;
-        uint64_t val_offset;
-        unsigned char *key, *val;
-        uint8_t rectype;
+        size_t i;
+        struct zsdb_priv *priv = (struct zsdb_priv *)data;
 
-        rectype = read_be64(fptr) & (1ULL >> 56);
-        switch(rectype) {
-        case REC_TYPE_KEY:
-                break;
-        case REC_TYPE_LONG_KEY:
-                break;
-        case REC_TYPE_VALUE:
-                break;
-        case REC_TYPE_LONG_VALUE:
-                break;
-        case REC_TYPE_COMMIT:
-                *offset = *offset + ZS_SHORT_COMMIT_REC_SIZE;
-                break;
-        case REC_TYPE_LONG_COMMIT:
-                *offset = *offset + ZS_LONG_COMMIT_REC_SIZE;
-                break;
-        case REC_TYPE_2ND_HALF_COMMIT:
-                break;
-        case REC_TYPE_FINAL:
-                break;
-        case REC_TYPE_LONG_FINAL:
-                break;
-        case REC_TYPE_DELETED:
-                break;
-        case REC_TYPE_UNUSED:
-                break;
-        default:
-                break;
+        printf("\n");
+        printf("Loading....\n");
+        for (i = 0; i < keylen; i++) {
+                printf("%c", key[i]);
         }
+        printf(" : ");
 
-        return ret;
+        for (i = 0; i < vallen; i++) {
+                printf("%c", val[i]);
+        }
+        printf("\n");
+
+        printf("---\n");
+
+        /* XXX: Add key and value to the btree here. */
+
+        return 0;
 }
 
-static int load_unpacked_records_to_btree(struct zsdb_priv *priv,
-                                          size_t mfsize)
+static int load_unpacked_records_to_btree(struct zsdb_priv *priv)
 {
         int ret = SDB_OK;
-        size_t offset = ZS_HDR_SIZE;
 
-        while (offset < mfsize) {
-               ret = load_one_unpacked_record(priv, &offset);
-        }
-
+        ret = zs_active_record_foreach(&priv->factive,
+                                       load_one_unpacked_record,
+                                       priv);
         return ret;
 }
 
@@ -430,7 +410,7 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
         }
 
         /* Load records from active file into a Btree */
-        /* load_unpacked_records_to_btree(priv, mf_size); */
+        load_unpacked_records_to_btree(priv);
 
         /* Seek to the end of the file, that's where the
            records need to appended to.
@@ -637,7 +617,7 @@ static int zs_abort(struct skiplistdb *db _unused_,
         return SDB_NOTIMPLEMENTED;
 }
 
-static int print_rec(void *data,
+static int print_rec(void *data _unused_,
                      unsigned char *key, size_t keylen,
                      unsigned char *val, size_t vallen)
 {
@@ -673,7 +653,7 @@ static int zs_dump(struct skiplistdb *db,
                 return SDB_ERROR;
 
         if (level == DB_DUMP_ACTIVE) {
-                ret = zs_active_record_foreach(&priv->factive, print_rec);
+                ret = zs_active_record_foreach(&priv->factive, print_rec, NULL);
         } else if (level == DB_DUMP_ALL) {
                 fprintf(stderr, "Cannot dump all records yet!\n");
                 return SDB_INTERNAL;
