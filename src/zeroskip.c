@@ -60,6 +60,8 @@ static void zs_create_active_filename(struct zsdb_priv *priv, cstring *fname)
 
         snprintf(index, 20, "%d", priv->dotzsdb.curidx);
 
+        cstring_release(fname);
+
         cstring_dup(&priv->dbdir, fname);
         cstring_addch(fname, '/');
         cstring_addstr(fname, ZS_FNAME_PREFIX);
@@ -71,29 +73,86 @@ static void zs_create_active_filename(struct zsdb_priv *priv, cstring *fname)
 static int zs_file_finalize_active(struct zsdb_priv *priv)
 {
         int ret = SDB_OK;
-        uint32_t curidx, newidx;
+        cstring newfname = CSTRING_INIT;
+        char index[11] = { 0 };
 
-        /* TODO
-           This function will do the following:
-            1) Flush active file
-            2) Open a temporary file - the finalized file
-               which name format: zeroskip-<uuid>-<curidx>-<curidx>
-            3) Write the zeroskip header
-            4) Write all keys (Add details,how do we add Val Offset?)
-            5) Write all values
-            6) Compute CRC32 for the data and write a commit record
-            7) Write the pointers in sorted order at the end
-            8) Write a final commit record
-         */
-        curidx = priv->dotzsdb.curidx;
-        newidx = curidx + 1;
+        ret = zs_write_commit_record(&priv->factive);
+        if (ret != SDB_OK)
+                goto done;
 
         mappedfile_flush(&priv->factive.mf);
         mappedfile_close(&priv->factive.mf);
 
-        zs_dotzsdb_update_index(priv, newidx);
-        /* TODO: More to come... This is *incomplete* */
+        /* Rename the current active db file */
+        cstring_dup(&priv->factive.fname, &newfname);
+        cstring_addch(&newfname, '-');
+        snprintf(index, 10, "%d", priv->dotzsdb.curidx);
+        cstring_addstr(&newfname, index);
+        if (rename(priv->factive.fname.buf, newfname.buf) < 0) {
+                ret = SDB_INTERNAL;
+                perror("Rename");
+                goto done;
+        }
+        cstring_release(&newfname);
 
+        priv->factive.ftype = DB_FTYPE_ACTIVE;
+        priv->factive.is_open = 0;
+done:
+        return ret;
+}
+
+static int zs_file_create_and_open_active(struct zsdb_priv *priv, uint32_t idx)
+{
+        int ret = SDB_OK;
+        size_t mf_size;
+        int mappedfile_flags = MAPPEDFILE_RW | MAPPEDFILE_CREATE;
+
+        /* Update the index */
+        zs_dotzsdb_update_index(priv, idx);
+
+        /* generate a new active filename */
+        zs_create_active_filename(priv, &priv->factive.fname);
+
+        /* Initialise the header fields of factive */
+        priv->factive.header.signature = ZS_SIGNATURE;
+        priv->factive.header.version = ZS_VERSION;
+        priv->factive.header.startidx = idx;
+        priv->factive.header.endidx = idx;
+        priv->factive.header.crc32 = 0;
+
+        /* Open the active filename for use */
+        ret = mappedfile_open(priv->factive.fname.buf,
+                              mappedfile_flags, &priv->factive.mf);
+        if (ret) {
+                ret = SDB_IOERROR;
+                goto done;
+        }
+
+        priv->factive.is_open = 1;
+
+        mappedfile_size(&priv->factive.mf, &mf_size);
+        /* The filesize is zero, it is a new file. */
+        if (mf_size == 0) {
+                ret = zs_header_write(&priv->factive);
+                if (ret) {
+                        fprintf(stderr, "Could not write zeroskip header.\n");
+                        mappedfile_close(&priv->factive.mf);
+                        goto done;
+                }
+        }
+
+        priv->is_open = 1;
+
+        if (zs_header_validate(&priv->factive)) {
+                ret = SDB_INVALID_DB;
+                mappedfile_close(&priv->factive.mf);
+                goto done;
+        }
+
+        /* Seek to location after header */
+        mf_size = ZS_HDR_SIZE;
+        mappedfile_seek(&priv->factive.mf, mf_size, NULL);
+done:
         return ret;
 }
 
@@ -251,6 +310,10 @@ static int setup_db_dir(struct skiplistdb *db)
         /* We seem to have a directory with a valid .zsdb.
            Now set the active file name */
         zs_create_active_filename(priv, &priv->factive.fname);
+        /* TODO: Check if the file is > 2MB and update the finalise filename
+                 if necessary
+        */
+
 
         priv->factive.ftype = DB_FTYPE_ACTIVE;
         priv->factive.is_open = 0;
@@ -381,6 +444,7 @@ static int zs_open(const char *dbdir, struct skiplistdb *db,
         }
 
         fprintf(stderr, "Opening file: %s\n", priv->factive.fname.buf);
+
         ret = mappedfile_open(priv->factive.fname.buf,
                               mappedfile_flags, &priv->factive.mf);
         if (ret) {
@@ -538,6 +602,17 @@ static int zs_add(struct skiplistdb *db,
         if (!priv->is_open && !priv->factive.is_open)
                 return SDB_ERROR;
 
+        /* Check size and finalize if necessary */
+        mappedfile_size(&priv->factive.mf, &mf_size);
+        if (mf_size >= TWOMB) {
+                ret = zs_file_finalize_active(priv);
+                if (ret != SDB_OK) return ret;
+
+                ret = zs_file_create_and_open_active(priv,
+                                                     priv->dotzsdb.curidx + 1);
+                if (ret != SDB_OK) return ret;
+        }
+
         /* Add to the Btree */
         rec = record_new(key, keylen, data, datalen);
         btree_insert(priv->btree, rec);
@@ -547,12 +622,6 @@ static int zs_add(struct skiplistdb *db,
         crc32_begin(&priv->factive.mf);
 
         ret = zs_write_keyval_record(&priv->factive, key, keylen, data, datalen);
-
-        /* Check size and finalize if necessary */
-        mappedfile_size(&priv->factive.mf, &mf_size);
-        if (mf_size >= TWOMB) {
-                zs_file_finalize_active(priv);
-        }
 
         return ret;
 }
