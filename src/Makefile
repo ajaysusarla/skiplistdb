@@ -6,6 +6,7 @@ SDB_LIBOBJS =          	    \
 	btree.o		    \
 	config.o	    \
 	cstring.o   	    \
+	file-lock.o	    \
 	htable.o	    \
 	log.o 		    \
 	mappedfile.o 	    \
@@ -24,6 +25,7 @@ SDB_HDRS =           	\
 	btree.h		\
 	config.h	\
 	cstring.h   	\
+	file-lock.h     \
 	htable.h	\
 	log.h		\
 	macros.h    	\

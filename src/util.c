@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <fts.h>
 #include <libgen.h>             /* For basename() */
+#include <poll.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/param.h>          /* For PATH_MAX */
@@ -359,3 +360,10 @@ done:
         return err;
 }
 
+/* sleep_ms():
+ *  Sleeping in milliseconds
+ */
+void sleep_ms(uint32_t milliseconds)
+{
+        poll(NULL, 0, milliseconds);
+}
